@@ -52,14 +52,38 @@ try {
         echo "<p>Se utilizará la fecha: {$fecha}</p>";
     } else {
         echo "<p style='color:orange'>Advertencia: No se encontraron encuestas para este curso, se usará la fecha actual.</p>";
-    }
-      echo "<h2>Generando PDF con disposición optimizada...</h2>";
+    }    echo "<h2>Generando PDF con disposición optimizada...</h2>";
+    
+    // Mostrar configuración de prueba
+    echo "<p>Configuración: Curso ID = $curso_id, Fecha = $fecha</p>";
+    
+    // Habilitar mostrar errores
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
     
     // Generar el PDF
-    $generator = new ReportePdfGenerator();
-    $generator->setConnection($db); // Asumimos que existe este método
+    $generator = new ReportePdfGenerator($db); // Pasar la conexión directamente
     $archivo_pdf = "final_graficos_evaluacion_optimizado.pdf";
-    $generator->generarReporteEvaluacion($curso_id, $fecha, $archivo_pdf);
+    
+    try {
+        if (!$generator->generarReporteEvaluacion($curso_id, $fecha, $archivo_pdf)) {
+            echo "<p style='color:red'>Error al generar el PDF.</p>";
+        } else {
+            echo "<p style='color:green'>PDF generado correctamente.</p>";
+            
+            // Verificar si el archivo existe
+            if (file_exists($archivo_pdf)) {
+                echo "<p>Tamaño del archivo: " . round(filesize($archivo_pdf) / 1024, 2) . " KB</p>";
+                echo "<h3>PDF generado correctamente: <a href='$archivo_pdf' target='_blank'>Ver PDF</a></h3>";
+                echo "<p>Ubicación: " . realpath($archivo_pdf) . "</p>";
+                echo "<iframe src='$archivo_pdf' width='100%' height='500px'></iframe>";
+            }
+        }
+    } catch (Exception $e) {
+        echo "<p style='color:red'>Error: " . $e->getMessage() . "</p>";
+        echo "<p>En archivo: " . $e->getFile() . " (línea " . $e->getLine() . ")</p>";
+    }
     
     echo "<h3>PDF generado correctamente: <a href='$archivo_pdf' target='_blank'>Ver PDF</a></h3>";
     echo "<p>Ubicación: " . realpath($archivo_pdf) . "</p>";

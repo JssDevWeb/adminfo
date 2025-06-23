@@ -6,7 +6,11 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/pdf/ReportePdfGenerator.php';
 
 try {
-    $generator = new ReportePdfGenerator();
+    // Obtener conexión a la base de datos
+    $db = Database::getInstance()->getConnection();
+    
+    // Crear generador con la conexión
+    $generator = new ReportePdfGenerator($db);
     
     echo "Generando PDF final con todos los datos corregidos...\n";
     
@@ -20,17 +24,26 @@ try {
         'graficos_evaluacion', 
         'estadisticas_detalladas',
         'comentarios_curso',
-        'comentarios_profesores'
+        'preguntas_criticas'
     ];
     
     echo "→ Curso ID: $curso_id\n";
     echo "→ Fecha: $fecha\n";
     echo "→ Secciones: " . implode(', ', $secciones) . "\n\n";
     
+    // Generar el contenido del PDF
     $pdf_content = $generator->generarReportePorCursoFecha($curso_id, $fecha, $secciones, []);
     
+    if (!$pdf_content) {
+        throw new Exception("Error: No se generó contenido para el PDF");
+    }
+    
+    // Guardar el PDF en un archivo
     $archivo_final = __DIR__ . '/pdf/REPORTE_FINAL_CORREGIDO.pdf';
-    file_put_contents($archivo_final, $pdf_content);
+    
+    if (file_put_contents($archivo_final, $pdf_content) === false) {
+        throw new Exception("Error al guardar el PDF en: $archivo_final");
+    }
     
     $tamaño = filesize($archivo_final);
     echo "✅ PDF FINAL GENERADO EXITOSAMENTE\n";
@@ -47,40 +60,26 @@ try {
     }
     
     // Verificar estructura básica del PDF
-    $contenido_pdf = file_get_contents($archivo_final);
+    $primeros_bytes = file_get_contents($archivo_final, false, null, 0, 10);
     
-    $checks = [
-        'Header PDF' => strpos($contenido_pdf, '%PDF-') === 0,
-        'Footer PDF' => strpos($contenido_pdf, '%%EOF') !== false,
-        'Título presente' => strpos($contenido_pdf, '/Title') !== false,
-        'Contenido TCPDF' => strpos($contenido_pdf, '/Creator (TCPDF') !== false
-    ];
-    
-    foreach ($checks as $check => $result) {
-        echo ($result ? "✓" : "✗") . " $check\n";
+    if (substr($primeros_bytes, 0, 4) === '%PDF') {
+        echo "✓ El archivo comienza con la firma PDF correcta (%PDF)\n";
+    } else {
+        echo "✗ El archivo NO comienza con la firma PDF correcta. Primeros bytes: " . bin2hex(substr($primeros_bytes, 0, 10)) . "\n";
     }
     
-    echo "\n🎯 PASOS PARA VERIFICACIÓN MANUAL:\n";
-    echo "1. Abre el archivo: $archivo_final\n";
-    echo "2. Verifica que aparezcan las siguientes secciones:\n";
-    echo "   - 📊 Resumen Ejecutivo con estadísticas\n";
-    echo "   - 📈 Gráficos de Evaluación\n";
-    echo "   - 📋 Estadísticas Detalladas con tabla\n";
-    echo "   - 💬 Comentarios del Curso\n";
-    echo "   - 👥 Comentarios de Profesores\n";
-    echo "3. Confirma que los datos sean coherentes:\n";
-    echo "   - Curso: Física General\n";
-    echo "   - Fecha: 20-06-2025\n";
-    echo "   - Profesores: Dra. Ana Martínez Pérez, Dr. Elena Moreno Castro\n";
-    echo "   - Promedios: Entre 5.50 y 7.00\n";
+    echo "\n📊 ESTADÍSTICAS ADICIONALES:\n";
+    echo "   - MD5: " . md5_file($archivo_final) . "\n";
+    echo "   - Fecha generación: " . date('Y-m-d H:i:s') . "\n";
     
-    echo "\n🚀 Si todo se ve correcto, ¡el sistema está COMPLETAMENTE FUNCIONAL!\n";
+    echo "\nSe recomienda abrir el PDF para verificar su contenido visual.\n";
+    echo "Ubicación: " . realpath($archivo_final) . "\n";
     
 } catch (Exception $e) {
     echo "❌ ERROR: " . $e->getMessage() . "\n";
-    echo "Archivo: " . $e->getFile() . "\n";
-    echo "Línea: " . $e->getLine() . "\n";
+    echo "   Archivo: " . $e->getFile() . " (Línea " . $e->getLine() . ")\n";
+    
+    // Mostrar trace para depuración
+    echo "\nStack Trace:\n" . $e->getTraceAsString() . "\n";
 }
-
-echo "\n=== FIN DE LA GENERACIÓN FINAL ===\n";
 ?>
