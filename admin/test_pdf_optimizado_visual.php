@@ -29,9 +29,9 @@ try {
     
     echo "<h2>Generando PDF con nuevo diseño visual...</h2>";
     
-    // Definir las secciones a incluir
+    // Definir las secciones a incluir - usando la nueva sección combinada
     $secciones = [
-        'resumen_ejecutivo',     // Ahora incluye la tabla de aprovechamiento
+        'resumen_completo',      // Nueva sección que combina resumen ejecutivo y tabla de aprovechamiento
         'graficos_evaluacion',   // Mejorada la disposición de gráficos
         'estadisticas_detalladas',
         'comentarios_curso',

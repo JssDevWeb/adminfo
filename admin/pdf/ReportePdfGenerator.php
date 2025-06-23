@@ -4,7 +4,9 @@ require_once __DIR__ . '/../../config/database.php';
 
 class ReportePdfGenerator {
     private $pdo;
-    private $pdf;    public function __construct($pdo = null) {
+    private $pdf;
+    
+    public function __construct($pdo = null) {
         // Si se proporciona una conexión, asignarla
         if ($pdo) {
             $this->pdo = $pdo;
@@ -15,14 +17,15 @@ class ReportePdfGenerator {
                 $this->pdo = $db->getConnection();
             } catch (Exception $e) {
                 // Si falla, registrar el error pero no detener la creación del objeto
-                // La conexión debe establecerse antes de usar métodos que requieran BD
-                error_log("Error al inicializar conexión a base de datos en ReportePdfGenerator: " . $e->getMessage());
+                // La conexión debe establecerse antes de usar métodos que requieran BD            error_log("Error al inicializar conexión a base de datos en ReportePdfGenerator: " . $e->getMessage());
             }
         }
         
         $this->pdf = new TCPDF();
         $this->configurarPdf();
-    }private function configurarPdf() {
+    }
+    
+    private function configurarPdf() {
         // Configurar para mejorar soporte UTF-8
         $this->pdf->SetDefaultMonospacedFont('courier');
         
@@ -1574,7 +1577,7 @@ class ReportePdfGenerator {
             
             // GENERAR SECCIONES EN EL ORDEN OPTIMIZADO
             // Priorizar las secciones más importantes para la primera página
-            $seccionesPrioritarias = ['resumen_ejecutivo'];
+            $seccionesPrioritarias = ['resumen_ejecutivo', 'resumen_completo'];
             $seccionesRestantes = array_diff($secciones, $seccionesPrioritarias);
             
             // Primero generar las secciones prioritarias
@@ -1582,7 +1585,8 @@ class ReportePdfGenerator {
                 if (in_array($seccion, $secciones)) {
                     try {
                         switch ($seccion) {
-                            case 'resumen_ejecutivo':
+                            case 'resumen_ejecutivo': // Mantener compatibilidad con llamadas antiguas
+                            case 'resumen_completo':  // Nueva sección combinada
                                 $this->generarResumenEjecutivoEstilizado($curso_id, $fecha);
                                 break;
                         }
@@ -1663,7 +1667,7 @@ class ReportePdfGenerator {
             $this->verificarConexionBD();
             
             // Definir las secciones a incluir en el reporte
-            $secciones = ['resumen_ejecutivo', 'graficos_evaluacion', 'estadisticas_detalladas', 'preguntas_criticas', 'comentarios_curso'];
+            $secciones = ['resumen_completo', 'graficos_evaluacion', 'estadisticas_detalladas', 'preguntas_criticas', 'comentarios_curso'];
             
             // Generar el PDF usando el método generarReportePorCursoFecha
             $pdfContent = $this->generarReportePorCursoFecha($curso_id, $fecha, $secciones);
@@ -1700,7 +1704,7 @@ class ReportePdfGenerator {
         // Título principal
         $this->pdf->SetFont('dejavusans', 'B', 18);
         $this->pdf->Cell(0, 20, 'REPORTE DE EVALUACIÓN', 0, 1, 'C');
-        $this->Ln(5);
+        $this->pdf->Ln(5);
         
         // Nombre del curso
         $this->pdf->SetFont('dejavusans', 'B', 16);
@@ -1924,6 +1928,415 @@ class ReportePdfGenerator {
             // Dibujar el gráfico con su leyenda
             $this->dibujarGraficoTortaOptimizado($currentX, $currentY, $chartRadius, "", $grafico['categorias'], $legendX);
             
+            // Avanzar a la siguiente posición horizontal si estamos mostrando varios gráficos por fila
+            if ($chartsPerRow > 1 && $chartIndex % $chartsPerRow < $chartsPerRow - 1) {
+                $currentX += $chartSpaceHorizontal;
+            }
+            
+            $chartIndex++;
+        }
+    }
+    
+    /**
+     * Genera el encabezado principal del reporte con los datos del curso y fecha
+     * Versión optimizada para ocupar menos espacio vertical
+     * 
+     * @param array $curso Datos del curso (id, nombre)
+     * @param string $fecha Fecha del reporte en formato Y-m-d
+     */
+    private function generarHeaderPrincipal($curso, $fecha) {
+        // Logo o título principal
+        $this->pdf->SetFont('dejavusans', 'B', 14);
+        $this->pdf->Cell(0, 8, 'REPORTE DE EVALUACIÓN ACADÉMICA', 0, 1, 'C');
+        
+        // Diseño de dos columnas para info del curso y fecha
+        $pageWidth = $this->pdf->getPageWidth();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $contentWidth = $pageWidth - $leftMargin - $rightMargin;
+        
+        // Posición inicial
+        $this->pdf->SetFont('dejavusans', 'B', 10);
+        $this->pdf->Cell($contentWidth * 0.7, 6, 'Curso: ' . $curso['nombre'], 0, 0, 'L');
+        
+        // Fecha en la misma línea a la derecha
+        $this->pdf->SetFont('dejavusans', '', 9);
+        $this->pdf->Cell($contentWidth * 0.3, 6, 'Fecha: ' . date('d/m/Y', strtotime($fecha)), 0, 1, 'R');
+        
+        // Fecha generación en otra línea a la derecha
+        $this->pdf->Cell($contentWidth * 0.7, 5, '', 0, 0); // Celda vacía a la izquierda
+        $this->pdf->SetFont('dejavusans', 'I', 8);
+        $this->pdf->Cell($contentWidth * 0.3, 5, 'Generado: ' . date('d/m/Y H:i'), 0, 1, 'R');
+          // Línea separadora más sutil
+        $this->pdf->SetDrawColor(220, 220, 220);
+        $this->pdf->Line($leftMargin, $this->pdf->GetY() + 2, $pageWidth - $rightMargin, $this->pdf->GetY() + 2);
+        $this->pdf->Ln(4); // Espacio reducido después del encabezado
+    }
+    
+    // Aquí termina correctamente el método generarHeaderPrincipal
+            $curso = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$curso) {
+                throw new Exception("Curso no encontrado con ID: $curso_id");
+            }
+            
+            $this->pdf->AddPage();
+            
+            // HEADER PRINCIPAL - Más compacto para ahorrar espacio
+            $this->generarHeaderPrincipal($curso, $fecha);
+            
+            // GENERAR SECCIONES EN EL ORDEN OPTIMIZADO
+            // Priorizar las secciones más importantes para la primera página
+            $seccionesPrioritarias = ['resumen_ejecutivo', 'resumen_completo'];
+            $seccionesRestantes = array_diff($secciones, $seccionesPrioritarias);
+            
+            // Primero generar las secciones prioritarias
+            foreach ($seccionesPrioritarias as $seccion) {
+                if (in_array($seccion, $secciones)) {
+                    try {
+                        switch ($seccion) {
+                            case 'resumen_ejecutivo': // Mantener compatibilidad con llamadas antiguas
+                            case 'resumen_completo':  // Nueva sección combinada
+                                $this->generarResumenEjecutivoEstilizado($curso_id, $fecha);
+                                break;
+                        }
+                    } catch (Exception $e) {
+                        $this->agregarMensajeError($seccion, $e->getMessage());
+                    }
+                }
+            }
+            
+            // Luego generar el resto de las secciones
+            foreach ($seccionesRestantes as $seccion) {
+                try {
+                    switch ($seccion) {
+                        case 'graficos_evaluacion':
+                            // Ya no generamos la tabla de aprovechamiento aquí porque está incluida en el resumen
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'GRÁFICOS DE EVALUACIÓN', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            
+                            // Obtener los datos para los gráficos
+                            $datos_graficos = $this->obtenerDatosGraficos($curso_id, $fecha);
+                            if (empty($datos_graficos)) {
+                                $this->pdf->SetFont('dejavusans', 'I', 10);
+                                $this->pdf->Cell(0, 10, 'No hay datos suficientes para generar gráficos.', 0, 1);
+                            } else {
+                                // Generar gráficos con la nueva disposición
+                                $this->generarGraficosMejorados($datos_graficos);
+                            }
+                            break;
+                        case 'estadisticas_detalladas':
+                            $this->generarSeccionEstadisticasTablaEstilizada($curso_id, $fecha);
+                            break;
+                        case 'preguntas_criticas':
+                            $this->generarPreguntasCriticasEstilizadas($curso_id, $fecha);
+                            break;
+                        case 'comentarios_curso':
+                            $this->generarComentariosCurso($curso_id, $fecha);
+                            break;
+                        case 'comentarios_profesores':
+                            // Esta sección aún no está implementada pero manejamos el caso
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'COMENTARIOS POR PROFESOR', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, 'Esta sección está en desarrollo y estará disponible próximamente.', 0, 1);
+                            break;
+                        default:
+                            // Sección no reconocida
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, "Sección '$seccion' no implementada.", 0, 1);
+                            $this->pdf->Ln(2);
+                            break;
+                    }
+                } catch (Exception $e) {
+                    $this->agregarMensajeError($seccion, $e->getMessage());
+                }
+            }
+            
+            // Generar el archivo PDF como string binario
+            return $this->pdf->Output('', 'S'); // 'S' para devolver como string
+            
+        } catch (Exception $e) {
+            return $this->generarPdfError($e, $curso_id, $fecha);
+        }
+    }
+      /**
+     * Genera un reporte de evaluación completo en PDF
+     * 
+     * @param int $curso_id ID del curso
+     * @param string $fecha Fecha en formato Y-m-d
+     * @param string $outputPath Ruta donde guardar el PDF
+     * @return bool Éxito de la generación
+     */    public function generarReporteEvaluacion($curso_id, $fecha, $outputPath = '') {
+        try {
+            // Verificar y establecer la conexión a la base de datos
+            $this->verificarConexionBD();
+            
+            // Definir las secciones a incluir en el reporte
+            $secciones = ['resumen_completo', 'graficos_evaluacion', 'estadisticas_detalladas', 'preguntas_criticas', 'comentarios_curso'];
+            
+            // Generar el PDF usando el método generarReportePorCursoFecha
+            $pdfContent = $this->generarReportePorCursoFecha($curso_id, $fecha, $secciones);
+            
+            // Si se especificó una ruta de salida, guardar el PDF
+            if (!empty($outputPath)) {
+                // Guardar el contenido binario directamente en el archivo
+                if (file_put_contents($outputPath, $pdfContent) !== false) {
+                    return true;
+                } else {
+                    throw new Exception("Error al guardar el archivo PDF en: $outputPath");
+                }
+            } else if ($pdfContent) {
+                // Si no hay ruta, pero tenemos contenido, devolverlo
+                return $pdfContent;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            error_log("Error al generar el reporte: " . $e->getMessage());
+            // Agregar información de debug más detallada
+            error_log("Detalles: " . $e->getFile() . " línea " . $e->getLine());
+            error_log("Traza: " . $e->getTraceAsString());
+            return false;
+        }
+    }
+    
+    /**
+     * Genera la portada del reporte
+     */
+    private function generarPortada($nombre_curso, $fecha) {
+        $this->pdf->AddPage();
+        
+        // Título principal
+        $this->pdf->SetFont('dejavusans', 'B', 18);
+        $this->pdf->Cell(0, 20, 'REPORTE DE EVALUACIÓN', 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Nombre del curso
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 15, $nombre_curso, 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Fecha
+        $fecha_formateada = date('d/m/Y', strtotime($fecha));
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->Cell(0, 10, 'Fecha: ' . $fecha_formateada, 0, 1, 'C');
+        
+        // Información adicional
+        $this->pdf->Ln(20);
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->Cell(0, 10, 'Este reporte contiene la evaluación completa del curso', 0, 1, 'C');
+        $this->pdf->Cell(0, 10, 'incluyendo gráficos de aprovechamiento y estadísticas.', 0, 1, 'C');
+        
+        // Fecha y hora de generación
+        $this->pdf->Ln(40);
+        $this->pdf->SetFont('dejavusans', '', 9);
+        $this->pdf->Cell(0, 10, 'Generado el: ' . date('d/m/Y H:i:s'), 0, 1, 'R');
+    }
+    
+    /**
+     * Genera un PDF con mensaje de error
+     */
+    private function generarPdfError($error, $curso_id, $fecha) {
+        // Crear un PDF simple con mensaje de error
+        $this->pdf = new TCPDF();
+        $this->configurarPdf();
+        
+        $this->pdf->AddPage();
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 10, 'ERROR AL GENERAR REPORTE', 0, 1, 'C');
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->MultiCell(0, 8, 'Se produjo un error al intentar generar el reporte para el curso ID: ' . $curso_id . ' con fecha: ' . $fecha, 0, 'L');
+        $this->pdf->Ln(5);
+        
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 8, 'Detalle del error:', 0, 1);
+        
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo
+        $this->pdf->MultiCell(0, 6, $error->getMessage(), 0, 'L');
+        
+        $this->pdf->SetTextColor(0, 0, 0); // Resetear color
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 10);
+        $this->pdf->Cell(0, 8, 'Fecha y hora: ' . date('Y-m-d H:i:s'), 0, 1);
+        
+        // Retornar el PDF como string binario
+        return $this->pdf->Output('', 'S');
+    }
+    
+    /**
+     * Genera la sección de comentarios del curso
+     */
+    private function generarComentariosCurso($curso_id, $fecha) {
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 10, 'COMENTARIOS DEL CURSO', 0, 1, 'L');
+        
+        $stmt = $this->pdo->prepare("
+            SELECT r.texto, p.texto as pregunta
+            FROM respuestas r 
+            JOIN preguntas p ON r.pregunta_id = p.id
+            JOIN encuestas e ON r.encuesta_id = e.id
+            WHERE e.curso_id = :curso_id 
+            AND DATE(e.fecha_envio) = :fecha
+            AND p.tipo = 'abierta'
+            AND r.texto IS NOT NULL AND LENGTH(r.texto) > 0
+            ORDER BY p.orden, r.id DESC
+        ");
+        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($comentarios)) {
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 8, "No hay comentarios disponibles para este curso y fecha.", 0, 1);
+            return;
+        }
+        
+        $pregunta_actual = '';
+        
+        foreach ($comentarios as $comentario) {
+            // Si cambia la pregunta, mostrarla
+            if ($pregunta_actual != $comentario['pregunta']) {
+                $pregunta_actual = $comentario['pregunta'];
+                $this->pdf->Ln(3);
+                $this->pdf->SetFont('dejavusans', 'B', 10);
+                $this->pdf->MultiCell(0, 7, 'Pregunta: ' . $pregunta_actual, 0, 'L');
+            }
+            
+            $this->pdf->SetFont('dejavusans', 'I', 9);
+            $this->pdf->SetFillColor(248, 249, 250);
+            $this->pdf->MultiCell(0, 6, $comentario['texto'], 1, 'L', true);
+            $this->pdf->Ln(2);
+        }
+    }
+    
+    /**
+     * Verifica la conexión a la base de datos y la establece si es necesario
+     * 
+     * @return bool Éxito al establecer la conexión
+     * @throws Exception Si no se puede establecer la conexión
+     */
+    private function verificarConexionBD() {
+        if (!$this->pdo) {
+            try {
+                $db = Database::getInstance();
+                $this->pdo = $db->getConnection();
+            } catch (Exception $e) {
+                throw new Exception("No se pudo establecer conexión con la base de datos: " . $e->getMessage());
+            }
+            
+            if (!$this->pdo) {
+                throw new Exception("No se pudo establecer conexión con la base de datos");
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Agrega un mensaje de error al PDF cuando una sección específica falla
+     *
+     * @param string $seccion Nombre de la sección que falló
+     * @param string $mensaje Mensaje de error detallado
+     */
+    private function agregarMensajeError($seccion, $mensaje) {
+        // Configurar estilo para mensajes de error
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo para errores
+        
+        // Agregar mensaje de error con el nombre de la sección
+        $this->pdf->Cell(0, 10, "Error en sección '$seccion':", 0, 1);
+        
+        // Detalles del error
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->MultiCell(0, 8, $mensaje, 0, 'L');
+        
+        // Restaurar colores normales
+        $this->pdf->SetTextColor(0, 0, 0);
+        $this->pdf->Ln(5);
+        
+        // Registrar error en los logs para diagnóstico
+        error_log("Error en sección PDF '$seccion': $mensaje");
+    }
+    
+    /**
+     * Genera gráficos de evaluación con mejor distribución visual
+     * Versión optimizada para mostrar más gráficos por página
+     */
+    private function generarGraficosMejorados($datos_graficos) {
+        // Configuración de la página
+        $pageWidth = $this->pdf->getPageWidth();
+        $pageHeight = $this->pdf->getPageHeight();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $topMargin = 40; // Considerar espacio para el encabezado
+        $bottomMargin = 25;
+        
+        // Espacio disponible
+        $availableWidth = $pageWidth - $leftMargin - $rightMargin;
+        $availableHeight = $pageHeight - $topMargin - $bottomMargin;
+        
+        // Configuración para los gráficos
+        $chartRadius = min(30, $availableWidth / 6); // Tamaño proporcional y no muy grande
+        $legendWidth = 75;
+        $spaceBetween = 10;
+        $chartSpaceHorizontal = $chartRadius * 3 + $spaceBetween; // Radio * 2 + espacio para la leyenda
+        
+        // Intentar mostrar dos gráficos por fila si hay espacio suficiente
+        $chartsPerRow = ($availableWidth >= $chartSpaceHorizontal * 2) ? 2 : 1;
+        
+        $chartIndex = 0;
+        $currentX = $leftMargin + $chartRadius;
+        $currentY = $this->pdf->GetY() + $chartRadius;
+        
+        // Procesar cada gráfico
+        foreach ($datos_graficos as $grafico) {
+            // Si es un nuevo gráfico y no cabe en la página actual
+            $estimatedHeight = $chartRadius * 2 + 10; // Altura estimada del gráfico
+            $isNewPage = false;
+            
+            if ($currentY + $chartRadius > $pageHeight - $bottomMargin) {
+                $this->pdf->AddPage();
+                $currentY = $topMargin + $chartRadius;
+                $currentX = $leftMargin + $chartRadius;
+                $chartIndex = 0; // Reiniciar contador
+                $isNewPage = true;
+            }
+            
+            // Si estamos empezando una nueva fila
+            if ($chartIndex % $chartsPerRow == 0 && !$isNewPage) {
+                $currentX = $leftMargin + $chartRadius;
+                if ($chartIndex > 0) {
+                    $currentY += $chartRadius * 2 + $spaceBetween;
+                }
+            }
+            
+            // Determinar posición de la leyenda
+            $legendX = $currentX + $chartRadius + 5;
+            
+            // Título del gráfico
+            $this->pdf->SetXY($currentX - $chartRadius, $currentY - $chartRadius - 10);
+            $this->pdf->SetFont('dejavusans', 'B', 10);
+            
+            // Determinar el título basado en el tipo de gráfico
+            $titulo = '';
+            if ($grafico['tipo'] == 'curso') {
+                $titulo = 'Curso: ' . $grafico['nombre'];
+            } elseif ($grafico['tipo'] == 'profesor') {
+                $titulo = 'Prof: ' . $grafico['nombre'];
+            }
+            
+            // Dibujar un título más compacto
+            $this->pdf->Cell($chartRadius * 2 + $legendWidth, 8, $titulo, 0, 1, 'L');
+            
+            // Dibujar el gráfico con su leyenda
+            $this->dibujarGraficoTortaOptimizado($currentX, $currentY, $chartRadius, "", $grafico['categorias'], $legendX);            
             // Avanzar a la siguiente posición horizontal si estamos mostrando varios gráficos por fila
             if ($chartsPerRow > 1 && $chartIndex % $chartsPerRow < $chartsPerRow - 1) {
                 $currentX += $chartSpaceHorizontal;

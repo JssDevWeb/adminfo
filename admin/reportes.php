@@ -1612,10 +1612,10 @@ function generarGraficoProfesorEspecifico($db, $profesor_id, $profesor_nombre, $
                           <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" name="secciones[]" value="resumen_ejecutivo" id="seccion_resumen" checked>
+                                    <input class="form-check-input" type="checkbox" name="secciones[]" value="resumen_completo" id="seccion_resumen" checked>
                                     <label class="form-check-label" for="seccion_resumen">
-                                        <strong><i class="bi bi-speedometer2"></i> Resumen Ejecutivo</strong>
-                                        <small class="d-block text-muted">KPIs principales, estadísticas descriptivas y distribución</small>
+                                        <strong><i class="bi bi-speedometer2"></i> Resumen Ejecutivo y Aprovechamiento</strong>
+                                        <small class="d-block text-muted">KPIs principales y tabla de aprovechamiento por curso/profesor</small>
                                     </label>
                                 </div>
                                 
@@ -1623,7 +1623,7 @@ function generarGraficoProfesorEspecifico($db, $profesor_id, $profesor_nombre, $
                                     <input class="form-check-input" type="checkbox" name="secciones[]" value="graficos_evaluacion" id="seccion_graficos" checked>
                                     <label class="form-check-label" for="seccion_graficos">
                                         <strong><i class="bi bi-pie-chart-fill"></i> Gráficos de Evaluación</strong>
-                                        <small class="d-block text-muted">Gráficos de torta por curso y profesores</small>
+                                        <small class="d-block text-muted">Gráficos de distribución de respuestas por curso y profesores</small>
                                     </label>
                                 </div>
                                 
@@ -1631,7 +1631,7 @@ function generarGraficoProfesorEspecifico($db, $profesor_id, $profesor_nombre, $
                                     <input class="form-check-input" type="checkbox" name="secciones[]" value="estadisticas_detalladas" id="seccion_estadisticas" checked>
                                     <label class="form-check-label" for="seccion_estadisticas">
                                         <strong><i class="bi bi-bar-chart-line"></i> Estadísticas Detalladas</strong>
-                                        <small class="d-block text-muted">Tabla de profesores con promedios y métricas</small>
+                                        <small class="d-block text-muted ">Tabla de profesores con promedios y métricas</small>
                                     </label>
                                 </div>
                             </div>
