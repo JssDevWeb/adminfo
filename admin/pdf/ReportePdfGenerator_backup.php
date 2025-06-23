@@ -5,45 +5,62 @@ require_once __DIR__ . '/../../config/database.php';
 class ReportePdfGenerator {
     private $pdo;
     private $pdf;
-      public function __construct() {
-        // Usar la clase Database existente
-        $db = Database::getInstance();
-        $this->pdo = $db->getConnection();
+    
+    public function __construct($pdo = null) {
+        // Si se proporciona una conexión, asignarla
+        if ($pdo) {
+            $this->pdo = $pdo;
+        } else {
+            // Si no, intentar obtenerla automáticamente
+            try {
+                $db = Database::getInstance();
+                $this->pdo = $db->getConnection();
+            } catch (Exception $e) {
+                // Si falla, registrar el error pero no detener la creación del objeto
+                // La conexión debe establecerse antes de usar métodos que requieran BD            error_log("Error al inicializar conexión a base de datos en ReportePdfGenerator: " . $e->getMessage());
+            }
+        }
         
         $this->pdf = new TCPDF();
         $this->configurarPdf();
     }
     
     private function configurarPdf() {
-        $this->pdf->SetCreator('Sistema de Encuestas Académicas');
+        // Configurar para mejorar soporte UTF-8
+        $this->pdf->SetDefaultMonospacedFont('courier');
+        
+        $this->pdf->SetCreator('Sistema de Encuestas Academicas');
         $this->pdf->SetAuthor('Academia');
         $this->pdf->SetTitle('Reporte de Encuestas');
-        $this->pdf->SetSubject('Reporte de resultados de encuestas académicas');
-        $this->pdf->SetKeywords('encuestas, académicas, reporte, profesores');
+        $this->pdf->SetSubject('Reporte de resultados de encuestas academicas');
+        $this->pdf->SetKeywords('encuestas, academicas, reporte, profesores');
         
         // Configurar márgenes
         $this->pdf->SetMargins(15, 20, 15);
         $this->pdf->SetHeaderMargin(10);
         $this->pdf->SetFooterMargin(10);
         
-        // Configurar fuente
-        $this->pdf->SetFont('helvetica', '', 10);
+        // Configurar fuente con soporte UTF-8
+        $this->pdf->SetFont('dejavusans', '', 10);
         
         // Configurar header y footer
         $this->pdf->setPrintHeader(false);
         $this->pdf->setPrintFooter(true);
+        
+        // Configurar auto-break para mejor manejo de páginas
+        $this->pdf->SetAutoPageBreak(TRUE, 15);
     }
     
     public function generarReporte($secciones = []) {
         $this->pdf->AddPage();
         
         // Título principal
-        $this->pdf->SetFont('helvetica', 'B', 16);
+        $this->pdf->SetFont('dejavusans', 'B', 16);
         $this->pdf->Cell(0, 10, 'REPORTE DE ENCUESTAS ACADÉMICAS', 0, 1, 'C');
         $this->pdf->Ln(5);
         
         // Fecha de generación
-        $this->pdf->SetFont('helvetica', '', 10);
+        $this->pdf->SetFont('dejavusans', '', 10);
         $this->pdf->Cell(0, 10, 'Fecha de generación: ' . date('d/m/Y H:i:s'), 0, 1, 'R');
         $this->pdf->Ln(10);
         
@@ -70,7 +87,7 @@ class ReportePdfGenerator {
                     break;
                 default:
                     // Sección no reconocida, agregar mensaje
-                    $this->pdf->SetFont('helvetica', 'I', 10);
+                    $this->pdf->SetFont('dejavusans', 'I', 10);
                     $this->pdf->Cell(0, 10, "Sección '$seccion' no reconocida.", 0, 1);
                     $this->pdf->Ln(5);
                     break;
@@ -78,7 +95,7 @@ class ReportePdfGenerator {
         
         // Si no hay secciones, agregar una página básica con información
         if (empty($secciones)) {
-            $this->pdf->SetFont('helvetica', '', 12);
+            $this->pdf->SetFont('dejavusans', '', 12);
             $this->pdf->Cell(0, 10, 'Reporte generado sin secciones específicas.', 0, 1);
             $this->pdf->Cell(0, 10, 'Para ver contenido detallado, especifique las secciones deseadas.', 0, 1);
         }
@@ -87,14 +104,14 @@ class ReportePdfGenerator {
     }
     
     private function generarResumenGeneral() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
+        $this->pdf->SetFont('dejavusans', 'B', 14);
         $this->pdf->Cell(0, 10, 'RESUMEN GENERAL', 0, 1, 'L');
         $this->pdf->Ln(5);
         
         // Obtener estadísticas generales
         $stats = $this->obtenerEstadisticasGenerales();
         
-        $this->pdf->SetFont('helvetica', '', 10);
+        $this->pdf->SetFont('dejavusans', '', 10);
         
         // Crear tabla de estadísticas
         $html = '<table border="1" cellpadding="5">
@@ -125,7 +142,7 @@ class ReportePdfGenerator {
     }
     
     private function generarEstadisticasProfesores() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
+        $this->pdf->SetFont('dejavusans', 'B', 14);
         $this->pdf->Cell(0, 10, 'ESTADÍSTICAS POR PROFESOR', 0, 1, 'L');
         $this->pdf->Ln(5);
         
@@ -154,7 +171,7 @@ class ReportePdfGenerator {
     }
     
     private function generarResultadosPorCurso() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
+        $this->pdf->SetFont('dejavusans', 'B', 14);
         $this->pdf->Cell(0, 10, 'RESULTADOS POR CURSO', 0, 1, 'L');
         $this->pdf->Ln(5);
         
@@ -183,14 +200,14 @@ class ReportePdfGenerator {
     }
     
     private function generarAnalisisPreguntas() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
+        $this->pdf->SetFont('dejavusans', 'B', 14);
         $this->pdf->Cell(0, 10, 'ANÁLISIS POR PREGUNTA', 0, 1, 'L');
         $this->pdf->Ln(5);
         
         $preguntas = $this->obtenerAnalisisPreguntas();
         
         foreach ($preguntas as $pregunta) {
-            $this->pdf->SetFont('helvetica', 'B', 11);
+            $this->pdf->SetFont('dejavusans', 'B', 11);
             $this->pdf->Cell(0, 8, 'Pregunta: ' . htmlspecialchars($pregunta['texto_pregunta']), 0, 1, 'L');
             
             $html = '<table border="1" cellpadding="3">
@@ -219,11 +236,11 @@ class ReportePdfGenerator {
     }
     
     private function generarGraficos() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
+        $this->pdf->SetFont('dejavusans', 'B', 14);
         $this->pdf->Cell(0, 10, 'GRÁFICOS Y VISUALIZACIONES', 0, 1, 'L');
         $this->pdf->Ln(5);
         
-        $this->pdf->SetFont('helvetica', '', 10);
+        $this->pdf->SetFont('dejavusans', '', 10);
         $this->pdf->Cell(0, 10, 'Nota: Los gráficos interactivos no se pueden exportar a PDF.', 0, 1, 'L');
         $this->pdf->Cell(0, 10, 'Para ver los gráficos, consulte la versión web del reporte.', 0, 1, 'L');
         $this->pdf->Ln(10);
@@ -236,7 +253,7 @@ class ReportePdfGenerator {
     private function generarResumenGraficos() {
         $datos = $this->obtenerDatosParaGraficos();
         
-        $this->pdf->SetFont('helvetica', 'B', 12);
+        $this->pdf->SetFont('dejavusans', 'B', 12);
         $this->pdf->Cell(0, 10, 'Resumen de Datos para Gráficos:', 0, 1, 'L');
         $this->pdf->Ln(3);
         
@@ -298,17 +315,16 @@ class ReportePdfGenerator {
             ];
         }
     }
-    
-    private function obtenerEstadisticasProfesores() {
+      private function obtenerEstadisticasProfesores() {
         try {
             $stmt = $this->pdo->query("
                 SELECT 
                     p.nombre,
                     COUNT(r.id) as total_encuestas,
-                    AVG(CAST(r.valor_text AS DECIMAL(3,2))) as promedio
+                    AVG(r.valor_int) as promedio
                 FROM profesores p
-                LEFT JOIN valor_texts r ON p.id = r.profesor_id
-                WHERE r.valor_text REGEXP '^[1-5]$'
+                LEFT JOIN respuestas r ON p.id = r.profesor_id
+                WHERE r.valor_int IS NOT NULL AND r.valor_int BETWEEN 1 AND 5
                 GROUP BY p.id, p.nombre
                 ORDER BY promedio DESC
             ");
@@ -322,16 +338,15 @@ class ReportePdfGenerator {
     private function obtenerResultadosPorCurso() {
         try {
             $stmt = $this->pdo->query("
-                SELECT 
-                    c.nombre as nombre_curso,
+                SELECT                    c.nombre as nombre_curso,
                     p.nombre as nombre_profesor,
                     COUNT(r.id) as total_encuestas,
-                    AVG(CAST(r.valor_text AS DECIMAL(3,2))) as promedio
+                    AVG(r.valor_int) as promedio
                 FROM cursos c
-                JOIN curso_profesores cp ON c.id = cp.curso_id
-                JOIN profesores p ON cp.profesor_id = p.id
-                LEFT JOIN valor_texts r ON c.id = r.curso_id AND p.id = r.profesor_id
-                WHERE r.valor_text REGEXP '^[1-5]$'
+                JOIN encuestas e ON c.id = e.curso_id
+                JOIN respuestas r ON e.id = r.encuesta_id
+                JOIN profesores p ON r.profesor_id = p.id
+                WHERE r.valor_int IS NOT NULL AND r.valor_int BETWEEN 1 AND 5
                 GROUP BY c.id, p.id, c.nombre, p.nombre
                 ORDER BY c.nombre, promedio DESC
             ");
@@ -341,57 +356,54 @@ class ReportePdfGenerator {
             return [];
         }
     }
-    
-    private function obtenerAnalisisPreguntas() {
+      private function obtenerAnalisisPreguntas() {
         try {
             $preguntas = [];
             
             // Obtener todas las preguntas
-            $stmt = $this->pdo->query("SELECT id, texto_pregunta FROM preguntas ORDER BY orden");
+            $stmt = $this->pdo->query("SELECT id, texto FROM preguntas ORDER BY orden");
             $preguntasData = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($preguntasData as $pregunta) {
                 $estadisticas = [];
-                
-                // Obtener estadísticas por valor_text para esta pregunta
+                  // Obtener estadísticas por valor para esta pregunta
                 $stmt = $this->pdo->prepare("
                     SELECT 
-                        valor_text,
+                        valor_int,
                         COUNT(*) as cantidad,
-                        (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM valor_texts WHERE pregunta_id = ?)) as porcentaje
-                    FROM valor_texts 
-                    WHERE pregunta_id = ?
-                    GROUP BY valor_text
-                    ORDER BY valor_text
+                        (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM respuestas WHERE pregunta_id = ?)) as porcentaje
+                    FROM respuestas 
+                    WHERE pregunta_id = ? AND valor_int IS NOT NULL
+                    GROUP BY valor_int
+                    ORDER BY valor_int
                 ");
                 
                 $stmt->execute([$pregunta['id'], $pregunta['id']]);
-                $valor_texts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $valores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
-                // Calcular promedio y desviación para valor_texts numéricas
+                // Calcular promedio y desviación para valores numéricos
                 $stmt = $this->pdo->prepare("
                     SELECT 
-                        AVG(CAST(valor_text AS DECIMAL(3,2))) as promedio,
-                        STDDEV(CAST(valor_text AS DECIMAL(3,2))) as desviacion
-                    FROM valor_texts 
-                    WHERE pregunta_id = ? AND valor_text REGEXP '^[1-5]$'
+                        AVG(valor_int) as promedio,
+                        STDDEV(valor_int) as desviacion
+                    FROM respuestas 
+                    WHERE pregunta_id = ? AND valor_int IS NOT NULL AND valor_int BETWEEN 1 AND 5
                 ");
                 
                 $stmt->execute([$pregunta['id']]);
                 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                foreach ($valor_texts as $valor_text) {
-                    $estadisticas[] = [
-                        'valor_text' => $valor_text['valor_text'],
-                        'cantidad' => $valor_text['cantidad'],
-                        'porcentaje' => $valor_text['porcentaje'],
+                foreach ($valores as $valor) {                    $estadisticas[] = [
+                        'valor' => $valor['valor_int'],
+                        'cantidad' => $valor['cantidad'],
+                        'porcentaje' => $valor['porcentaje'],
                         'promedio' => $stats['promedio'] ?? 0,
                         'desviacion' => $stats['desviacion'] ?? 0
                     ];
                 }
                 
                 $preguntas[] = [
-                    'texto_pregunta' => $pregunta['texto_pregunta'],
+                    'texto_pregunta' => $pregunta['texto'],
                     'estadisticas' => $estadisticas
                 ];
             }
@@ -401,36 +413,35 @@ class ReportePdfGenerator {
             return [];
         }
     }
-    
-    private function obtenerDatosParaGraficos() {
+      private function obtenerDatosParaGraficos() {
         try {
             $datos = [];
             
-            // Distribución de valor_texts por escala
+            // Distribución de respuestas por escala
             $stmt = $this->pdo->query("
                 SELECT 
-                    valor_text, 
+                    valor_int, 
                     COUNT(*) as cantidad 
-                FROM valor_texts 
-                WHERE valor_text REGEXP '^[1-5]$' 
-                GROUP BY valor_text 
-                ORDER BY valor_text
+                FROM respuestas 
+                WHERE valor_int IS NOT NULL AND valor_int BETWEEN 1 AND 5 
+                GROUP BY valor_int 
+                ORDER BY valor_int
             ");
             
             $distribucion = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($distribucion as $item) {
-                $datos["valor_texts con valor " . $item['valor_text']] = $item['cantidad'];
+                $datos["Respuestas con valor " . $item['valor_int']] = $item['cantidad'];
             }
             
             // Promedio por departamento (si existe)
             $stmt = $this->pdo->query("
                 SELECT 
                     p.departamento,
-                    AVG(CAST(r.valor_text AS DECIMAL(3,2))) as promedio
+                    AVG(r.valor_int) as promedio
                 FROM profesores p
-                JOIN valor_texts r ON p.id = r.profesor_id
-                WHERE r.valor_text REGEXP '^[1-5]$' AND p.departamento IS NOT NULL
+                JOIN respuestas r ON p.id = r.profesor_id
+                WHERE r.valor_int IS NOT NULL AND r.valor_int BETWEEN 1 AND 5 AND p.departamento IS NOT NULL
                 GROUP BY p.departamento
                 ORDER BY promedio DESC
             ");
@@ -451,9 +462,7 @@ class ReportePdfGenerator {
         if ($promedio >= 3.5) return 'Bueno';
         if ($promedio >= 3.0) return 'Regular';
         return 'Necesita Mejora';
-    }
-    
-    /**
+    }    /**
      * Obtener estadísticas detalladas por profesor
      */
     private function obtenerEstadisticasPorProfesor($curso_id, $fecha) {
@@ -461,16 +470,16 @@ class ReportePdfGenerator {
             $stmt = $this->pdo->prepare("
                 SELECT 
                     p.id,
-                    CONCAT(p.nombre, ' ', p.apellido) as nombre,
-                    COUNT(r.id) as total_valor_texts,
-                    AVG(CASE WHEN r.valor_text REGEXP '^[1-5]$' THEN CAST(r.valor_text AS DECIMAL(3,2)) END) as promedio,
-                    (COUNT(CASE WHEN r.valor_text IN ('4', '5') THEN 1 END) * 100.0 / COUNT(CASE WHEN r.valor_text REGEXP '^[1-5]$' THEN 1 END)) as satisfaccion
+                    p.nombre,
+                    COUNT(r.id) as total_respuestas,
+                    AVG(CASE WHEN r.valor_int BETWEEN 1 AND 5 THEN r.valor_int END) as promedio,
+                    (COUNT(CASE WHEN r.valor_int IN (4, 5) THEN 1 END) * 100.0 / COUNT(CASE WHEN r.valor_int BETWEEN 1 AND 5 THEN 1 END)) as satisfaccion
                 FROM profesores p
-                LEFT JOIN valor_texts r ON p.id = r.profesor_id
+                LEFT JOIN respuestas r ON p.id = r.profesor_id
                 LEFT JOIN encuestas e ON r.encuesta_id = e.id
                 WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
-                GROUP BY p.id, p.nombre, p.apellido
-                HAVING total_valor_texts > 0
+                GROUP BY p.id, p.nombre
+                HAVING total_respuestas > 0
                 ORDER BY promedio DESC, satisfaccion DESC
             ");
             
@@ -485,7 +494,7 @@ class ReportePdfGenerator {
             foreach ($resultados as &$profesor) {
                 $profesor['promedio'] = floatval($profesor['promedio'] ?? 0);
                 $profesor['satisfaccion'] = round(floatval($profesor['satisfaccion'] ?? 0), 1);
-                $profesor['total_valor_texts'] = intval($profesor['total_valor_texts']);
+                $profesor['total_respuestas'] = intval($profesor['total_respuestas']);
             }
             
             return $resultados;
@@ -494,22 +503,20 @@ class ReportePdfGenerator {
             return [];
         }
     }
-    
-    /**
+      /**
      * Obtener estadísticas por categoría de preguntas
-     */
-    private function obtenerEstadisticasPorCategoria($curso_id, $fecha) {
+     */    private function obtenerEstadisticasPorCategoria($curso_id, $fecha) {
         try {
             $stmt = $this->pdo->prepare("
                 SELECT 
-                    COALESCE(pr.categoria, 'General') as categoria,
+                    COALESCE(pr.seccion, 'General') as categoria,
                     COUNT(r.id) as total,
-                    AVG(CASE WHEN r.valor_text REGEXP '^[1-5]$' THEN CAST(r.valor_text AS DECIMAL(3,2)) END) as promedio
+                    AVG(CASE WHEN r.valor_int BETWEEN 1 AND 5 THEN r.valor_int END) as promedio
                 FROM preguntas pr
-                LEFT JOIN valor_texts r ON pr.id = r.pregunta_id
+                LEFT JOIN respuestas r ON pr.id = r.pregunta_id
                 LEFT JOIN encuestas e ON r.encuesta_id = e.id
                 WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
-                GROUP BY pr.categoria
+                GROUP BY pr.seccion
                 HAVING total > 0
                 ORDER BY promedio DESC
             ");
@@ -533,112 +540,929 @@ class ReportePdfGenerator {
             return [];
         }
     }/**
-     * NUEVO MÉTODO PRINCIPAL - Generar PDF idéntico a la imagen
-     * Este método reemplaza toda la lógica anterior
+     * ==========================================
+     * FUNCIONES PARA GRÁFICOS DE TORTA EN PDF
+     * ==========================================
      */
-    public function generarReportePorCursoFecha($curso_id, $fecha, $secciones, $imagenes_graficos = []) {
-        try {
-            // Validar que el curso existe
-            $stmt = $this->pdo->prepare("SELECT nombre FROM cursos WHERE id = :curso_id");
-            $stmt->execute([':curso_id' => $curso_id]);
-            $curso = $stmt->fetch();
-            
-            if (!$curso) {
-                throw new Exception("Curso no encontrado con ID: $curso_id");
+    
+    /**
+     * Generar sección de gráficos de torta como en la web
+     */    
+    private function generarGraficosEvaluacion($curso_id, $fecha) {
+        $datos_graficos = $this->obtenerDatosGraficos($curso_id, $fecha);
+
+        if (empty($datos_graficos)) {
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 10, 'No hay datos suficientes para generar gráficos.', 0, 1);
+            $this->pdf->Ln(5);
+            return;
+        }
+
+        // Primero generar la tabla de aprovechamiento
+        $this->generarTablaAprovechamiento($curso_id, $fecha);
+        
+        // Luego generar los gráficos
+        $this->pdf->AddPage();
+        $this->pdf->SetFont('dejavusans', 'B', 14);
+        $this->pdf->Cell(0, 10, 'GRÁFICOS DE EVALUACIÓN', 0, 1, 'L');
+        $this->pdf->Ln(5);
+
+        // Configuración mejorada para los gráficos
+        $pageWidth = $this->pdf->getPageWidth();
+        $pageHeight = $this->pdf->getPageHeight();
+        $margenIzquierdo = 20;
+        $margenDerecho = 20;
+        $margenSuperior = 40; // Espacio para el título de la página
+        $margenInferior = 25;
+        
+        // Ancho disponible para contenido
+        $anchoDisponible = $pageWidth - $margenIzquierdo - $margenDerecho;
+        
+        // Configuración del gráfico y leyenda
+        $chartR = 35; // Radio del gráfico
+        $leyendaAncho = 70; // Ancho para la leyenda
+        $espacioEntreGraficoYLeyenda = 5;
+        $espacioEntreGraficos = 20; // Espacio vertical entre gráficos
+        
+        // Disposición horizontal mejorada
+        $chartX = $margenIzquierdo + $chartR; // Centro X del gráfico
+        $leyendaX = $chartX + $chartR + $espacioEntreGraficoYLeyenda; // Posición X de la leyenda
+        
+        $chartY = $margenSuperior + $chartR; // Posición Y inicial (centro del gráfico)
+        
+        // Procesamos cada gráfico
+        foreach ($datos_graficos as $indice => $grafico) {
+            // Si el siguiente gráfico no cabe en la página actual, crear una nueva
+            if ($chartY + $chartR + $espacioEntreGraficos > $pageHeight - $margenInferior) {
+                $this->pdf->AddPage();
+                $this->pdf->SetFont('dejavusans', 'B', 14);
+                $this->pdf->Cell(0, 10, 'GRÁFICOS DE EVALUACIÓN (Continuación)', 0, 1, 'L');
+                $this->pdf->Ln(5);
+                $chartY = $margenSuperior + $chartR;
             }
             
-            $this->pdf->AddPage();
+            // Calcular el aprovechamiento
+            $aprovechamiento = $grafico['max_puntuacion'] > 0 ? 
+                round(($grafico['puntuacion_real'] / $grafico['max_puntuacion']) * 100, 1) : 0;
             
-            // HEADER PRINCIPAL - Igual que en la imagen
-            $this->generarHeaderPrincipal($curso, $fecha);
+            // Crear etiqueta según el tipo (curso o profesor)
+            $tipo_etiqueta = $grafico['tipo'] == 'curso' ? 'CURSO' : 'PROFESOR';
             
-            // GENERAR SECCIONES EN EL ORDEN CORRECTO
-            foreach ($secciones as $seccion) {
-                try {
-                    switch ($seccion) {
-                        case 'graficos_evaluacion':
-                            $this->generarSeccionGraficos($curso_id, $fecha, $imagenes_graficos);
-                            break;
-                        case 'estadisticas_detalladas':
-                            $this->generarSeccionEstadisticasTabla($curso_id, $fecha);
-                            break;
-                        case 'comentarios_curso':
-                            $this->generarSeccionComentariosCurso($curso_id, $fecha);
-                            break;
-                        case 'comentarios_profesores':
-                            $this->generarSeccionComentariosProfesores($curso_id, $fecha);
-                            break;
-                        case 'resumen_ejecutivo':
-                            // Esta sección se omite por ahora, enfoque en gráficos y tablas
-                            break;
-                        case 'preguntas_criticas':
-                            // Esta sección se omite por ahora, enfoque en gráficos y tablas
-                            break;
-                    }
-                } catch (Exception $e) {
-                    $this->agregarMensajeError($seccion, $e->getMessage());
-                }
+            // Guardar la posición Y antes del título para mantener referencia
+            $posYTitulo = $this->pdf->GetY();
+            
+            // Título del gráfico con fondo
+            $this->pdf->SetFont('dejavusans', 'B', 12);
+            $this->pdf->SetFillColor(230, 235, 245); // Color de fondo más suave
+            $this->pdf->Cell(0, 10, ($indice + 1) . '. ' . mb_strtoupper($tipo_etiqueta) . ': ' . $grafico['nombre'], 0, 1, 'L', true);
+            
+            // Información adicional a la izquierda del gráfico (no encima)
+            // Subtítulos informativos con formato mejorado
+            $this->pdf->SetFont('dejavusans', '', 10);
+            $this->pdf->Cell($anchoDisponible, 8, 'Encuestas: ' . $grafico['total_encuestas'] . ' | Preguntas: ' . $grafico['num_preguntas'], 0, 1, 'L');
+            
+            // Puntuación y aprovechamiento con mejor formato
+            $this->pdf->SetFont('dejavusans', 'B', 10);
+            
+            // Colorear el aprovechamiento según su valor
+            if ($aprovechamiento >= 90) {
+                $this->pdf->SetTextColor(46, 139, 87); // Verde oscuro para excelente
+            } elseif ($aprovechamiento >= 70) {
+                $this->pdf->SetTextColor(30, 144, 255); // Azul para bueno
+            } elseif ($aprovechamiento >= 50) {
+                $this->pdf->SetTextColor(255, 165, 0); // Naranja para aceptable
+            } else {
+                $this->pdf->SetTextColor(220, 20, 60); // Rojo para bajo
             }
-              return $this->pdf->Output('', 'S');
             
-        } catch (Exception $e) {
-            return $this->generarPdfError($e, $curso_id, $fecha);
+            $puntuacion_texto = "Puntuación: " . $grafico['puntuacion_real'] . " de " . $grafico['max_puntuacion'];
+            $aprovechamiento_texto = "Aprovechamiento: " . $aprovechamiento . "%";
+            
+            $this->pdf->Cell($anchoDisponible, 8, $puntuacion_texto . ' | ' . $aprovechamiento_texto, 0, 1, 'L');
+            
+            // Restaurar el color del texto
+            $this->pdf->SetTextColor(0, 0, 0);
+            
+            // Calcular altura del título y datos (espacio usado)
+            $alturaInfoPrevia = $this->pdf->GetY() - $posYTitulo;
+            
+            // Establecer posición Y del gráfico después de la información
+            // Asegurar espacio suficiente para el gráfico
+            $chartY = $this->pdf->GetY() + $chartR;
+            
+            // Dibujar el gráfico de torta con posición específica para la leyenda
+            $this->dibujarGraficoTortaOptimizado($chartX, $chartY, $chartR, "", $grafico['categorias'], $leyendaX);
+            
+            // Actualizar posición Y para el próximo gráfico - después de verificar dónde terminó la leyenda
+            $chartY = $this->pdf->GetY() + $espacioEntreGraficos;
+            
+            // Añadir línea divisoria entre gráficos excepto después del último
+            if ($indice < count($datos_graficos) - 1) {
+                $this->pdf->SetDrawColor(200, 200, 200);
+                $this->pdf->Line($margenIzquierdo, $chartY - $espacioEntreGraficos/2, $pageWidth - $margenDerecho, $chartY - $espacioEntreGraficos/2);
+            }
         }
     }
     
     /**
-     * Agregar mensaje de error en el PDF cuando falla una sección
+     * Dibuja un sector de un gráfico de torta.
      */
-    private function agregarMensajeError($seccion, $mensaje) {
-        $this->pdf->SetFont('helvetica', 'I', 10);
-        $this->pdf->SetTextColor(220, 53, 69); // Color rojo
-        $this->pdf->Cell(0, 8, '❌ Error en sección "' . $seccion . '": ' . $mensaje, 0, 1, 'L');
-        $this->pdf->SetTextColor(0, 0, 0); // Resetear color
+    private function dibujarSectorTorta($xc, $yc, $r, $a, $b, $color) {
+        // Establecer color de relleno
+        $this->pdf->SetFillColorArray($color);
+        
+        // Puntos para el polígono que forma el sector
+        $puntos = array($xc, $yc); // El centro como primer punto
+        
+        // Aumentar el número de segmentos para sectores más suaves
+        $n = 40; // Mayor número para curvas más suaves
+        
+        // Crear los puntos del sector
+        for ($i = 0; $i <= $n; $i++) {
+            $angulo = $a + ($b - $a) * $i / $n;
+            $puntos[] = $xc + $r * cos(deg2rad($angulo));
+            $puntos[] = $yc + $r * sin(deg2rad($angulo));
+        }
+        
+        // Dibujar el sector con relleno
+        $this->pdf->Polygon($puntos, 'F');
+        
+        // Dibujar líneas desde el centro hasta los bordes para definir mejor los sectores
+        // especialmente importante en sectores pequeños
+        $this->pdf->SetDrawColor(255, 255, 255);  // Líneas blancas para mejor contraste
+        $this->pdf->SetLineWidth(0.2);
+        
+        // Línea al punto inicial del arco
+        $x_inicio = $xc + $r * cos(deg2rad($a));
+        $y_inicio = $yc + $r * sin(deg2rad($a));
+        $this->pdf->Line($xc, $yc, $x_inicio, $y_inicio);
+        
+        // Línea al punto final del arco
+        $x_fin = $xc + $r * cos(deg2rad($b));
+        $y_fin = $yc + $r * sin(deg2rad($b));
+        $this->pdf->Line($xc, $yc, $x_fin, $y_fin);
+    }
+    
+    /**
+     * Dibuja un gráfico de torta completo con su leyenda.
+     */
+    private function dibujarGraficoTorta($xc, $yc, $r, $titulo, $categorias) {
+        // Aplicar título si existe
+        if (!empty($titulo)) {
+            $this->pdf->SetFont('dejavusans', 'B', 11);
+            $this->pdf->MultiCell(0, 8, $titulo, 0, 'L');
+            $this->pdf->Ln(2);
+        }
+
+        // Si no hay categorías con porcentajes, mostrar mensaje vacío
+        $hay_datos = false;
+        foreach ($categorias as $cat) {
+            if (isset($cat['porcentaje']) && $cat['porcentaje'] > 0) {
+                $hay_datos = true;
+                break;
+            }
+        }
+        
+        if (!$hay_datos) {
+            $this->pdf->SetFont('dejavusans', 'I', 9);
+            $this->pdf->Cell(0, 10, 'No hay datos disponibles para este gráfico', 0, 1, 'C');
+            return;
+        }
+
+        $angulo_inicio = 0;
+        $offset_text = 5; // Espacio entre el borde del gráfico y la leyenda
+
+        // Dibujar sectores con mejor definición
+        foreach ($categorias as $cat) {
+            if (isset($cat['porcentaje']) && $cat['porcentaje'] > 0) {
+                $angulo_fin = $angulo_inicio + ($cat['porcentaje'] / 100) * 360;
+                $this->dibujarSectorTorta($xc, $yc, $r, $angulo_inicio, $angulo_fin, $cat['color_rgb']);
+                $angulo_inicio = $angulo_fin;
+            }
+        }
+        
+        // Dibujar línea negra alrededor del círculo completo para mejor definición
+        $this->pdf->SetDrawColor(0, 0, 0);
+        $this->pdf->SetLineWidth(0.2);
+        $this->pdf->Circle($xc, $yc, $r);
+
+        // Dibujar leyenda en posición optimizada
+        $leyendaX = $xc + $r + $offset_text;
+        $leyendaY = $yc - $r; // Alinear con el tope del círculo
+        $altoCaja = 5; // Alto de cada elemento de la leyenda
+        $anchoCaja = 5; // Ancho del cuadrado de color
+        $espacioEntreCajas = 2; // Espacio entre elementos
+        $maxAnchoTexto = 55; // Ancho máximo para el texto de la leyenda
+
+        $this->pdf->SetFont('dejavusans', '', 8);
+        $this->pdf->SetXY($leyendaX, $leyendaY);
+
+        foreach ($categorias as $cat) {
+            if (isset($cat['nombre']) && isset($cat['porcentaje']) && isset($cat['color_rgb']) && $cat['porcentaje'] > 0) {
+                $this->pdf->SetFillColorArray($cat['color_rgb']);
+                $this->pdf->Rect($leyendaX, $this->pdf->GetY(), $anchoCaja, $altoCaja, 'F');
+                
+                // Dibujar borde negro alrededor del cuadrado de color para mejor definición
+                $this->pdf->SetDrawColor(0, 0, 0);
+                $this->pdf->Rect($leyendaX, $this->pdf->GetY(), $anchoCaja, $altoCaja, 'D');
+                
+                // Texto de la leyenda con porcentaje
+                $textoLeyenda = ' ' . $cat['nombre'] . ' (' . $cat['porcentaje'] . '%)';
+                
+                // Usar MultiCell con ancho fijo para manejar textos largos
+                $this->pdf->SetXY($leyendaX + $anchoCaja + 1, $this->pdf->GetY());
+                $this->pdf->MultiCell($maxAnchoTexto, $altoCaja, $textoLeyenda, 0, 'L');
+                
+                // Mover a la siguiente posición
+                $this->pdf->SetXY($leyendaX, $this->pdf->GetY() + $espacioEntreCajas);
+            }
+        }
+    }
+      /**
+     * Dibuja un gráfico de torta con leyenda en posición optimizada a la derecha.
+     * Versión mejorada para evitar superposiciones.
+     */
+    private function dibujarGraficoTortaOptimizado($xc, $yc, $r, $titulo, $categorias, $leyendaX) {
+        // Aplicar título si existe
+        if (!empty($titulo)) {
+            $this->pdf->SetFont('dejavusans', 'B', 11);
+            $this->pdf->MultiCell(0, 8, $titulo, 0, 'L');
+            $this->pdf->Ln(2);
+        }
+
+        // Si no hay categorías con porcentajes, mostrar mensaje vacío
+        $hay_datos = false;
+        foreach ($categorias as $cat) {
+            if (isset($cat['porcentaje']) && $cat['porcentaje'] > 0) {
+                $hay_datos = true;
+                break;
+            }
+        }
+        
+        if (!$hay_datos) {
+            $this->pdf->SetFont('dejavusans', 'I', 9);
+            $this->pdf->Cell(0, 10, 'No hay datos disponibles para este gráfico', 0, 1, 'C');
+            return;
+        }
+
+        $angulo_inicio = 0;
+
+        // Dibujar sectores con mejor definición
+        foreach ($categorias as $cat) {
+            if (isset($cat['porcentaje']) && $cat['porcentaje'] > 0) {
+                $angulo_fin = $angulo_inicio + ($cat['porcentaje'] / 100) * 360;
+                $this->dibujarSectorTorta($xc, $yc, $r, $angulo_inicio, $angulo_fin, $cat['color_rgb']);
+                $angulo_inicio = $angulo_fin;
+            }
+        }
+        
+        // Dibujar línea negra alrededor del círculo completo para mejor definición
+        $this->pdf->SetDrawColor(0, 0, 0);
+        $this->pdf->SetLineWidth(0.2);
+        $this->pdf->Circle($xc, $yc, $r);
+
+        // Configuración para la leyenda
+        $leyendaY = $yc - $r; // Alinear con el tope del círculo
+        $altoCaja = 5; // Alto de cada elemento de la leyenda
+        $anchoCaja = 5; // Ancho del cuadrado de color
+        $espacioEntreCajas = 2; // Espacio entre elementos
+        $maxAnchoTexto = 55; // Ancho máximo para el texto de la leyenda
+
+        // Dibujar leyenda en posición explícita a la derecha
+        $this->pdf->SetFont('dejavusans', '', 8);
+        $this->pdf->SetXY($leyendaX, $leyendaY);
+        
+        // Calcular altura máxima entre el gráfico y la leyenda
+        $alturaInicialLeyenda = $this->pdf->GetY();
+        $alturaMaxima = $yc + $r; // Altura máxima del gráfico (centro + radio)
+        
+        foreach ($categorias as $cat) {
+            if (isset($cat['nombre']) && isset($cat['porcentaje']) && isset($cat['color_rgb']) && $cat['porcentaje'] > 0) {
+                $this->pdf->SetFillColorArray($cat['color_rgb']);
+                $this->pdf->Rect($leyendaX, $this->pdf->GetY(), $anchoCaja, $altoCaja, 'F');
+                
+                // Dibujar borde negro alrededor del cuadrado de color
+                $this->pdf->SetDrawColor(0, 0, 0);
+                $this->pdf->Rect($leyendaX, $this->pdf->GetY(), $anchoCaja, $altoCaja, 'D');
+                
+                // Texto de la leyenda con porcentaje
+                $textoLeyenda = ' ' . $cat['nombre'] . ' (' . $cat['porcentaje'] . '%)';
+                
+                // Usar MultiCell con ancho fijo para manejar textos largos
+                $this->pdf->SetXY($leyendaX + $anchoCaja + 1, $this->pdf->GetY());
+                $this->pdf->MultiCell($maxAnchoTexto, $altoCaja, $textoLeyenda, 0, 'L');
+                
+                // Mover a la siguiente posición
+                $this->pdf->SetXY($leyendaX, $this->pdf->GetY() + $espacioEntreCajas);
+            }
+        }
+        
+        // Determinar cuál es mayor: la altura del gráfico o la altura de la leyenda
+        $alturaFinalLeyenda = $this->pdf->GetY();
+        $alturaLeyenda = $alturaFinalLeyenda - $alturaInicialLeyenda;
+        
+        // Establecer la posición Y del cursor después del elemento más alto
+        $nuevaY = max($alturaMaxima, $alturaFinalLeyenda);
+        $this->pdf->SetY($nuevaY);
+        
+        // Añadir un pequeño espacio después del gráfico
         $this->pdf->Ln(5);
     }
     
     /**
-     * Generar PDF de error cuando falla todo el proceso
+     * Agrupa las respuestas en categorías según su valor
      */
-    private function generarPdfError($exception, $curso_id, $fecha) {
-        // Crear un PDF limpio para mostrar el error
-        $this->pdf = new TCPDF();
-        $this->configurarPdf();
-        $this->pdf->AddPage();
+    private function agruparEnCategorias($distribucion_raw) {
+        // Definir las categorías y sus valores correspondientes
+        // Usamos el valor específico para cada categoría según los requisitos:
+        // Excelente=10, Bueno=7, Correcto=5, Regular=3, Deficiente=1
+        $categorias = [
+            'Excelente'  => ['valores' => [10, 9], 'color' => [46, 139, 87], 'valor_asignado' => 10],   // Verde
+            'Bueno'      => ['valores' => [8, 7], 'color' => [30, 144, 255], 'valor_asignado' => 7],    // Azul
+            'Correcto'   => ['valores' => [6, 5], 'color' => [255, 215, 0], 'valor_asignado' => 5],     // Amarillo
+            'Regular'    => ['valores' => [4, 3], 'color' => [255, 140, 0], 'valor_asignado' => 3],     // Naranja
+            'Deficiente' => ['valores' => [2, 1], 'color' => [220, 20, 60], 'valor_asignado' => 1]      // Rojo
+        ];
+
+        // Inicializar contadores y total
+        $total_respuestas = 0;
+        $total_puntos = 0;
+        $conteo_categorias = [];
         
-        $this->pdf->SetFont('helvetica', 'B', 16);
-        $this->pdf->SetTextColor(220, 53, 69);
-        $this->pdf->Cell(0, 15, '❌ ERROR EN GENERACIÓN DE REPORTE', 0, 1, 'C');
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(10);
+        foreach ($categorias as $nombre => $info) {
+            $conteo_categorias[$nombre] = 0;
+        }
+
+        // Procesar cada resultado y agruparlo en su categoría
+        foreach ($distribucion_raw as $item) {
+            $valor_int = (int)$item['valor_int'];
+            $cantidad = (int)$item['cantidad'];
+            $total_respuestas += $cantidad;
+            
+            foreach ($categorias as $nombre => $info) {
+                if (in_array($valor_int, $info['valores'])) {
+                    $conteo_categorias[$nombre] += $cantidad;
+                    $total_puntos += $cantidad * $info['valor_asignado'];
+                    break;
+                }
+            }
+        }
+
+        // Crear array final con los datos procesados para el gráfico
+        $datos_categorias = [];
+        foreach ($categorias as $nombre => $info) {
+            $conteo = $conteo_categorias[$nombre];
+            $porcentaje = $total_respuestas > 0 ? round(($conteo / $total_respuestas) * 100, 1) : 0;
+            
+            // Solo añadir categorías que tengan valores
+            if ($conteo > 0 || $porcentaje > 0) {
+                $datos_categorias[] = [
+                    'nombre' => $nombre,
+                    'cantidad' => $conteo,
+                    'porcentaje' => $porcentaje,
+                    'color_rgb' => $info['color'],
+                    'valor_asignado' => $info['valor_asignado']
+                ];
+            }
+        }
+
+        return $datos_categorias;
+    }    /**
+     * Obtiene los datos para todos los gráficos (curso y profesores).
+     */
+    private function obtenerDatosGraficos($curso_id, $fecha) {
+        $graficos = [];
+
+        // 1. Gráfico del curso
+        try {
+            // Obtener información del curso
+            $stmt_info = $this->pdo->prepare("SELECT c.id, c.nombre FROM cursos c WHERE c.id = :curso_id");
+            $stmt_info->execute([':curso_id' => $curso_id]);
+            $curso = $stmt_info->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$curso) return [];
+
+            // Contar total de encuestas para el curso
+            $stmt_encuestas = $this->pdo->prepare("
+                SELECT COUNT(DISTINCT e.id) as total_encuestas
+                FROM encuestas e
+                JOIN respuestas r ON e.id = r.encuesta_id
+                JOIN preguntas pr ON r.pregunta_id = pr.id
+                WHERE e.curso_id = :curso_id
+                AND DATE(e.fecha_envio) = :fecha
+                AND pr.seccion = 'curso' AND pr.tipo = 'escala'
+            ");
+            $stmt_encuestas->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+            $total_encuestas = $stmt_encuestas->fetch(PDO::FETCH_ASSOC)['total_encuestas'] ?? 0;
+            
+            // Contar número de preguntas de curso tipo escala
+            $stmt_preguntas = $this->pdo->prepare("
+                SELECT COUNT(*) as num_preguntas
+                FROM preguntas
+                WHERE seccion = 'curso' AND tipo = 'escala' AND activa = 1
+            ");
+            $stmt_preguntas->execute();
+            $num_preguntas = $stmt_preguntas->fetch(PDO::FETCH_ASSOC)['num_preguntas'] ?? 0;
+            
+            // Obtener distribución para generar el gráfico
+            $stmt_curso = $this->pdo->prepare("
+                SELECT r.valor_int, COUNT(*) as cantidad
+                FROM encuestas e
+                JOIN respuestas r ON e.id = r.encuesta_id
+                JOIN preguntas pr ON r.pregunta_id = pr.id
+                WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
+                  AND pr.seccion = 'curso' AND pr.tipo = 'escala'
+                GROUP BY r.valor_int
+                ORDER BY r.valor_int DESC
+            ");
+            $stmt_curso->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+            $distribucion_curso = $stmt_curso->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($distribucion_curso)) {
+                // Calcular puntuación total basada en los valores reales asignados (10, 7, 5, 3, 1)
+                $categorias = $this->agruparEnCategorias($distribucion_curso);
+                $puntuacion_real = 0;
+                $total_respuestas = 0;
+                
+                foreach ($categorias as $categoria) {
+                    $puntuacion_real += $categoria['cantidad'] * $categoria['valor_asignado'];
+                    $total_respuestas += $categoria['cantidad'];
+                }
+                
+                // Para cursos: el valor máximo es 100
+                // Calculamos el máximo teórico: total_encuestas * num_preguntas * 10 (valor máximo por respuesta)
+                $max_puntuacion = $total_encuestas * $num_preguntas * 10;
+
+                // Si hay un problema con los datos, usar un valor predeterminado seguro
+                if ($max_puntuacion <= 0 || $num_preguntas <= 0) {
+                    $max_puntuacion = $total_encuestas * 100; // 100 puntos por encuesta (estándar para cursos)
+                }
+
+                $graficos[] = [
+                    'tipo' => 'curso',
+                    'titulo' => 'Evaluación General del Curso: ' . $curso['nombre'],
+                    'nombre' => $curso['nombre'],
+                    'total_encuestas' => $total_encuestas,
+                    'num_preguntas' => $num_preguntas,
+                    'puntuacion_real' => $puntuacion_real,
+                    'max_puntuacion' => $max_puntuacion,
+                    'categorias' => $categorias
+                ];
+            }
+        } catch (Exception $e) {
+            // Registrar error
+            error_log("Error al obtener datos del curso: " . $e->getMessage());
+        }
+
+        // 2. Gráficos de profesores
+        try {
+            $stmt_profesores = $this->pdo->prepare("
+                SELECT DISTINCT p.id, p.nombre 
+                FROM profesores p 
+                JOIN respuestas r ON p.id = r.profesor_id 
+                JOIN encuestas e ON r.encuesta_id = e.id
+                WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
+            ");
+            $stmt_profesores->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+            $profesores = $stmt_profesores->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($profesores as $profesor) {
+                // Contar encuestas para este profesor
+                $stmt_encuestas = $this->pdo->prepare("
+                    SELECT COUNT(DISTINCT e.id) as total_encuestas
+                    FROM encuestas e
+                    JOIN respuestas r ON e.id = r.encuesta_id
+                    WHERE e.curso_id = :curso_id
+                    AND r.profesor_id = :profesor_id
+                    AND DATE(e.fecha_envio) = :fecha
+                ");
+                $stmt_encuestas->execute([
+                    ':curso_id' => $curso_id, 
+                    ':profesor_id' => $profesor['id'],
+                    ':fecha' => $fecha
+                ]);
+                $total_encuestas = $stmt_encuestas->fetch(PDO::FETCH_ASSOC)['total_encuestas'] ?? 0;
+                
+                // Contar número de preguntas de profesor tipo escala
+                $stmt_preguntas = $this->pdo->prepare("
+                    SELECT COUNT(*) as num_preguntas
+                    FROM preguntas
+                    WHERE seccion = 'profesor' AND tipo = 'escala' AND activa = 1
+                ");
+                $stmt_preguntas->execute();
+                $num_preguntas = $stmt_preguntas->fetch(PDO::FETCH_ASSOC)['num_preguntas'] ?? 0;
+                
+                // Obtener distribución para el gráfico
+                $stmt_prof = $this->pdo->prepare("
+                    SELECT r.valor_int, COUNT(*) as cantidad
+                    FROM respuestas r
+                    JOIN encuestas e ON r.encuesta_id = e.id
+                    JOIN preguntas pr ON r.pregunta_id = pr.id
+                    WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
+                      AND r.profesor_id = :profesor_id AND pr.seccion = 'profesor' AND pr.tipo = 'escala'
+                    GROUP BY r.valor_int
+                    ORDER BY r.valor_int DESC
+                ");
+                $stmt_prof->execute([
+                    ':curso_id' => $curso_id, 
+                    ':fecha' => $fecha, 
+                    ':profesor_id' => $profesor['id']
+                ]);
+                $distribucion_prof = $stmt_prof->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($distribucion_prof)) {
+                    // Calcular puntuación real usando los valores asignados
+                    $categorias = $this->agruparEnCategorias($distribucion_prof);
+                    $puntuacion_real = 0;
+                    $total_respuestas = 0;
+                    
+                    foreach ($categorias as $categoria) {
+                        $puntuacion_real += $categoria['cantidad'] * $categoria['valor_asignado'];
+                        $total_respuestas += $categoria['cantidad'];
+                    }
+                    
+                    // Para profesores: el valor máximo es 70
+                    // Calculamos el máximo teórico: total_encuestas * num_preguntas * 10 (valor máximo por respuesta)
+                    $max_puntuacion = $total_encuestas * $num_preguntas * 10;
+                    
+                    // Si hay un problema con los datos, usar un valor predeterminado seguro
+                    if ($max_puntuacion <= 0 || $num_preguntas <= 0) {
+                        $max_puntuacion = $total_encuestas * 70; // 70 puntos por encuesta (estándar para profesores)
+                    }
+
+                    $graficos[] = [
+                        'tipo' => 'profesor',
+                        'titulo' => 'Evaluación de: ' . $profesor['nombre'],
+                        'nombre' => $profesor['nombre'],
+                        'total_encuestas' => $total_encuestas,
+                        'num_preguntas' => $num_preguntas,
+                        'puntuacion_real' => $puntuacion_real,
+                        'max_puntuacion' => $max_puntuacion,
+                        'categorias' => $categorias
+                    ];
+                }
+            }
+        } catch (Exception $e) {
+            // Registrar error
+            error_log("Error al obtener datos de profesores: " . $e->getMessage());
+        }
         
-        $this->pdf->SetFont('helvetica', '', 12);
-        $this->pdf->Cell(0, 8, 'Se produjo un error al generar el reporte:', 0, 1, 'L');
-        $this->pdf->Ln(5);
+        return $graficos;
+    }
+
+    /**
+     * Genera una tabla con estilos mejorados.
+     */
+    private function generarTablaEstilizada($headers, $data, $widths, $title = '') {
+        // Verificar si tenemos suficiente espacio en la página actual
+        $alturaEstimada = 20; // Altura para el título
+        $alturaEstimada += 7; // Altura para la cabecera
+        $alturaEstimada += count($data) * 8; // Altura estimada para las filas (8 puntos por fila)
+        $alturaEstimada += 15; // Margen adicional
         
-        $this->pdf->SetFont('helvetica', 'B', 11);
-        $this->pdf->Cell(0, 8, 'Detalles del error:', 0, 1, 'L');
-        $this->pdf->SetFont('helvetica', '', 10);
-        $this->pdf->MultiCell(0, 6, $exception->getMessage(), 0, 'L');
-        $this->pdf->Ln(5);
+        $espacioRestante = $this->pdf->getPageHeight() - $this->pdf->GetY();
         
-        $this->pdf->Cell(0, 6, 'Curso ID: ' . $curso_id, 0, 1, 'L');
-        $this->pdf->Cell(0, 6, 'Fecha: ' . $fecha, 0, 1, 'L');
-        $this->pdf->Cell(0, 6, 'Archivo: ' . $exception->getFile(), 0, 1, 'L');
-        $this->pdf->Cell(0, 6, 'Línea: ' . $exception->getLine(), 0, 1, 'L');
+        // Si no hay suficiente espacio, agregar una nueva página
+        if ($espacioRestante < $alturaEstimada) {
+            $this->pdf->AddPage();
+        }
         
-        return $this->pdf->Output('', 'S');
+        // Título de la tabla con estilo mejorado
+        if (!empty($title)) {
+            $this->pdf->SetFont('dejavusans', 'B', 12);
+            $this->pdf->SetFillColor(240, 240, 240);
+            $this->pdf->Cell(0, 10, $title, 0, 1, 'L', true);
+            $this->pdf->Ln(2);
+        }
+
+        // Cabecera con mejor contraste y legibilidad
+        $this->pdf->SetFont('dejavusans', 'B', 9);
+        $this->pdf->SetFillColor(220, 230, 242); // Color más suave y elegante
+        $this->pdf->SetTextColor(0);
+        $this->pdf->SetDrawColor(180, 180, 180);
+        $this->pdf->SetLineWidth(0.2);
+
+        $sumAnchos = array_sum($widths);
+        foreach ($headers as $i => $header) {
+            $this->pdf->Cell($widths[$i], 7, $header, 1, 0, 'C', 1);
+        }
+        $this->pdf->Ln();
+
+        // Datos con filas alternas para mejor lectura
+        $this->pdf->SetFont('dejavusans', '', 8);
+        $fill = false;
+
+        foreach ($data as $row) {
+            // Determinar la altura necesaria para cada celda
+            $maxHeight = 6; // Altura mínima
+            foreach ($row as $i => $cell) {
+                $height = $this->pdf->getStringHeight($widths[$i], (string)$cell, false, true, '', 1);
+                if ($height > $maxHeight) {
+                    $maxHeight = $height;
+                }
+            }
+
+            // Alternar colores para mejor legibilidad
+            $this->pdf->SetFillColor($fill ? 245 : 255, $fill ? 245 : 255, $fill ? 245 : 255);
+            
+            // Dibujar las celdas con la misma altura
+            foreach ($row as $i => $cell) {
+                // Alineación según el tipo de contenido (centrar números, alinear a la izquierda el texto)
+                $align = is_numeric($cell) && !is_string($cell) ? 'C' : 'L';
+                $this->pdf->MultiCell($widths[$i], $maxHeight, (string)$cell, 1, $align, $fill, 0, '', '', true, 0, false, true, $maxHeight, 'M');
+            }
+            $this->pdf->Ln();
+            $fill = !$fill;
+        }
+        
+        // Espacio después de la tabla más compacto
+        $this->pdf->Ln(6);
+    }
+
+    /**
+     * Genera una tabla con estilos modernos y compactos similar al diseño web
+     */
+    private function generarTablaEstilizadaCompacta($headers, $data, $widths, $title = '') {
+        // Colores modernos para la tabla
+        $colorCabecera = [41, 128, 185]; // Azul moderno
+        $colorBordes = [189, 195, 199]; // Gris claro
+        $colorFila1 = [245, 245, 245]; // Casi blanco
+        $colorFila2 = [240, 240, 240]; // Gris muy claro
+        $colorTexto = [44, 62, 80]; // Azul oscuro
+        
+        // Espaciado compacto
+        $alturaCabecera = 8;
+        $alturaFila = 7;
+        $padding = 2;
+        
+        // Título de la tabla (opcional)
+        if (!empty($title)) {
+            $this->pdf->SetFont('dejavusans', 'B', 13);
+            $this->pdf->SetFillColor(236, 240, 241); // Gris muy suave
+            $this->pdf->Cell(0, 10, $title, 0, 1, 'L', true);
+            $this->pdf->Ln(1); // Muy poco espacio después del título
+        }
+
+        // Configuración para la cabecera
+        $this->pdf->SetFont('dejavusans', 'B', 9);
+        $this->pdf->SetFillColorArray($colorCabecera);
+        $this->pdf->SetTextColor(255, 255, 255); // Texto blanco para contraste
+        $this->pdf->SetDrawColorArray($colorBordes);
+        $this->pdf->SetLineWidth(0.2);
+
+        // Dibujar la cabecera
+        foreach ($headers as $i => $header) {
+            $this->pdf->Cell($widths[$i], $alturaCabecera, $header, 1, 0, 'C', 1);
+        }
+        $this->pdf->Ln();
+
+        // Restaurar color de texto para los datos
+        $this->pdf->SetTextColorArray($colorTexto);
+        $this->pdf->SetFont('dejavusans', '', 8);
+        
+        // Alternar colores para filas de datos
+        $fill = false;
+
+        // Dibujar filas de datos
+        foreach ($data as $row) {
+            // Determinar la altura necesaria para este conjunto de celdas
+            $maxHeight = $alturaFila; // Altura mínima
+            
+            // Calcular la altura máxima necesaria para esta fila
+            foreach ($row as $i => $cell) {
+                $cellHeight = $this->pdf->getStringHeight($widths[$i], (string)$cell);
+                $maxHeight = max($maxHeight, $cellHeight + $padding);
+            }
+            
+            // Establecer color de fondo para filas alternas
+            $this->pdf->SetFillColorArray($fill ? $colorFila2 : $colorFila1);
+            
+            // Dibujar las celdas con el mismo alto
+            foreach ($row as $i => $cell) {
+                // Determinar alineación según el contenido
+                $align = is_numeric($cell) && !is_string($cell) ? 'C' : 'L';
+                
+                // Si es la columna de "Aprovechamiento" añadir color según el porcentaje
+                if ($i == count($row) - 1 && strpos($cell, '%') !== false) {
+                    $porcentaje = floatval($cell);
+                    if ($porcentaje >= 90) {
+                        $this->pdf->SetTextColor(39, 174, 96); // Verde para excelente
+                    } elseif ($porcentaje >= 70) {
+                        $this->pdf->SetTextColor(41, 128, 185); // Azul para bueno
+                    } elseif ($porcentaje >= 50) {
+                        $this->pdf->SetTextColor(243, 156, 18); // Naranja para regular
+                    } else {
+                        $this->pdf->SetTextColor(231, 76, 60); // Rojo para deficiente
+                    }
+                }
+                
+                // Dibujar celda con MultiCell para soportar texto largo
+                $this->pdf->MultiCell($widths[$i], $maxHeight, (string)$cell, 1, $align, $fill, 0);
+                
+                // Restaurar color de texto normal después de cada celda especial
+                if ($i == count($row) - 1 && strpos($cell, '%') !== false) {
+                    $this->pdf->SetTextColorArray($colorTexto);
+                }
+            }
+            
+            $this->pdf->Ln();
+            $fill = !$fill; // Alternar relleno
+        }
+        
+        // Espacio después de la tabla
+        $this->pdf->Ln(4);
+    }
+
+    /**
+     * Genera la tabla de aprovechamiento como se muestra en reportes.php
+     */
+    private function generarTablaAprovechamiento($curso_id, $fecha) {
+        // Datos del curso
+        $stmt_curso = $this->pdo->prepare("
+            SELECT c.nombre,
+                   COUNT(DISTINCT e.id) AS total_encuestas,
+                   COUNT(DISTINCT pr.id) AS total_preguntas,
+                   SUM(r.valor_int) AS suma_puntos
+            FROM cursos c
+            JOIN encuestas e ON c.id = e.curso_id
+            JOIN respuestas r ON e.id = r.encuesta_id
+            JOIN preguntas pr ON r.pregunta_id = pr.id
+            WHERE c.id = :curso_id 
+              AND DATE(e.fecha_envio) = :fecha
+              AND pr.seccion = 'curso'
+              AND pr.tipo = 'escala'
+            GROUP BY c.id, c.nombre
+        ");
+        $stmt_curso->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $curso_data = $stmt_curso->fetch(PDO::FETCH_ASSOC);
+
+        // Datos de profesores
+        $stmt_prof = $this->pdo->prepare("
+            SELECT p.nombre,
+                   COUNT(DISTINCT e.id) AS total_encuestas,
+                   COUNT(DISTINCT pr.id) AS total_preguntas,
+                   SUM(r.valor_int) AS suma_puntos
+            FROM profesores p
+            JOIN respuestas r ON p.id = r.profesor_id
+            JOIN encuestas e ON r.encuesta_id = e.id
+            JOIN preguntas pr ON r.pregunta_id = pr.id
+            WHERE e.curso_id = :curso_id 
+              AND DATE(e.fecha_envio) = :fecha
+              AND pr.seccion = 'profesor'
+              AND pr.tipo = 'escala'
+            GROUP BY p.id, p.nombre
+            ORDER BY p.nombre
+        ");
+        $stmt_prof->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $profesores_data = $stmt_prof->fetchAll(PDO::FETCH_ASSOC);
+
+        // Preparar datos para la tabla
+        $headers = ['Tipo', 'Curso/Profesor', 'Encuestas', 'Preguntas', 'Puntuación', 'Aprovechamiento'];
+        $data = [];
+        
+        // Optimizar anchos según el contenido típico
+        $widths = [15, 65, 20, 20, 30, 30];
+
+        // Si hay datos del curso, agregarlos
+        if ($curso_data && $curso_data['total_preguntas'] > 0) {
+            $max_puntos_curso = $curso_data['total_encuestas'] * $curso_data['total_preguntas'] * 10; // 10 puntos máx por pregunta
+            $puntuacion = $curso_data['suma_puntos'] . ' / ' . $max_puntos_curso;
+            $aprovechamiento = $max_puntos_curso > 0 ? 
+                               number_format(($curso_data['suma_puntos'] / $max_puntos_curso) * 100, 1) . '%' : '0%';
+            
+            $data[] = [
+                'Curso', 
+                $curso_data['nombre'], 
+                $curso_data['total_encuestas'], 
+                $curso_data['total_preguntas'], 
+                $puntuacion, 
+                $aprovechamiento
+            ];
+        }
+
+        // Agregar datos de profesores
+        foreach ($profesores_data as $prof) {
+            if ($prof['total_preguntas'] > 0) {
+                $max_puntos_prof = $prof['total_encuestas'] * $prof['total_preguntas'] * 10; // 10 puntos máx por pregunta
+                $puntuacion = $prof['suma_puntos'] . ' / ' . $max_puntos_prof;
+                $aprovechamiento = $max_puntos_prof > 0 ? 
+                                  number_format(($prof['suma_puntos'] / $max_puntos_prof) * 100, 1) . '%' : '0%';
+                
+                $data[] = [
+                    'Profesor', 
+                    $prof['nombre'], 
+                    $prof['total_encuestas'], 
+                    $prof['total_preguntas'], 
+                    $puntuacion, 
+                    $aprovechamiento
+                ];
+            }
+        }
+
+        // Si no hay datos, no mostrar nada
+        if (empty($data)) {
+            return;
+        }
+
+        // No agregar una página nueva para la tabla, usar la página actual
+        // Esto permite que los gráficos aparezcan inmediatamente después si hay espacio
+        $this->generarTablaEstilizada($headers, $data, $widths, 'TABLA DE APROVECHAMIENTO');
     }
     
     /**
-     * Generar sección de Resumen Ejecutivo
+     * Generar tabla de aprovechamiento integrada con el resumen ejecutivo
+     * Versión optimizada para mostrar en la misma página que el resumen
      */
-    private function generarResumenEjecutivo($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 10, '📊 RESUMEN EJECUTIVO', 0, 1, 'L');
-        $this->pdf->Ln(5);
-        
-        // Obtener estadísticas específicas del curso y fecha
+    private function generarTablaAprovechamientoIntegrada($curso_id, $fecha) {
+        try {
+            // TÍTULO
+            $this->pdf->SetFont('dejavusans', 'B', 14);
+            $this->pdf->Cell(0, 10, 'TABLA DE APROVECHAMIENTO', 0, 1, 'L');
+            $this->pdf->Ln(2);
+            
+            // Consulta para obtener datos del curso y profesores
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    'CURSO' as tipo,
+                    c.nombre as nombre,
+                    COUNT(DISTINCT e.id) as total_encuestas,
+                    COUNT(DISTINCT r.id) as total_preguntas,
+                    SUM(r.valor_int) as suma_puntos,
+                    (SELECT COUNT(id) * 10 FROM preguntas WHERE tipo = 'escala') as max_puntos
+                FROM cursos c
+                LEFT JOIN encuestas e ON c.id = e.curso_id
+                LEFT JOIN respuestas r ON e.id = r.encuesta_id
+                WHERE c.id = :curso_id AND DATE(e.fecha_envio) = :fecha
+                GROUP BY c.id, c.nombre
+                
+                UNION ALL
+                
+                SELECT 
+                    'PROFESOR' as tipo,
+                    CONCAT(p.nombre, ' ', p.apellidos) as nombre,
+                    COUNT(DISTINCT e.id) as total_encuestas,
+                    COUNT(DISTINCT r.id) as total_preguntas,
+                    SUM(r.valor_int) as suma_puntos,
+                    COUNT(DISTINCT r.id) * 10 as max_puntos
+                FROM profesores p
+                JOIN respuestas r ON p.id = r.profesor_id
+                JOIN encuestas e ON r.encuesta_id = e.id
+                WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
+                GROUP BY p.id, p.nombre, p.apellidos
+                ORDER BY tipo DESC, nombre ASC
+            ");
+            $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Preparar datos para la tabla
+            $headers = ['Tipo', 'Curso/Profesor', 'Encuestas', 'Preguntas', 'Puntuación', 'Aprovechamiento'];
+            $data = [];
+            $widths = [20, 70, 25, 25, 25, 30]; // Anchos ajustados para la tabla
+            
+            foreach ($resultados as $r) {
+                $max_puntos_prof = intval($r['max_puntos']);
+                $puntuacion = $r['suma_puntos'] . ' / ' . $max_puntos_prof;
+                $aprovechamiento = $max_puntos_prof > 0 ? 
+                                  number_format(($r['suma_puntos'] / $max_puntos_prof) * 100, 1) . '%' : '0%';
+                
+                // Usar una etiqueta más visual para el tipo
+                $tipo_mostrar = $r['tipo'] == 'CURSO' ? 
+                    $this->pdf->Image(__DIR__ . '/../../assets/img/curso_icon.png', '', '', 4, 4, 'PNG') : 
+                    $this->pdf->Image(__DIR__ . '/../../assets/img/profesor_icon.png', '', '', 4, 4, 'PNG');
+                
+                if (!file_exists(__DIR__ . '/../../assets/img/curso_icon.png')) {
+                    $tipo_mostrar = $r['tipo'];
+                }
+                
+                $data[] = [
+                    $r['tipo'], 
+                    $r['nombre'], 
+                    $r['total_encuestas'], 
+                    $r['total_preguntas'], 
+                    $puntuacion, 
+                    $aprovechamiento
+                ];
+            }
+
+            // Si no hay datos, no mostrar nada
+            if (empty($data)) {
+                return;
+            }
+
+            // Generar la tabla con un estilo más moderno y compacto
+            $this->generarTablaEstilizadaCompacta($headers, $data, $widths);
+        } catch (Exception $e) {
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 10, 'Error al generar tabla de aprovechamiento: ' . $e->getMessage(), 0, 1);
+        }
+    }
+
+    /**
+     * Generar sección de Resumen Ejecutivo con tabla estilizada
+     * Versión optimizada que combina resumen ejecutivo y tabla de aprovechamiento
+     */
+    private function generarResumenEjecutivoEstilizado($curso_id, $fecha) {
+        // Consulta para obtener estadísticas generales del curso
         $stmt = $this->pdo->prepare("
             SELECT 
                 COUNT(DISTINCT e.id) as total_encuestas,
@@ -646,1389 +1470,879 @@ class ReportePdfGenerator {
                 AVG(r.valor_int) as promedio_general,
                 STDDEV(r.valor_int) as desviacion_general
             FROM encuestas e
-            JOIN valor_texts r ON e.id = r.encuesta_id
-            JOIN preguntas p ON r.pregunta_id = p.id
-            WHERE e.curso_id = :curso_id 
-            AND DATE(e.fecha_envio) = :fecha
-            AND p.tipo = 'escala'
+            JOIN respuestas r ON e.id = r.encuesta_id
+            WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
         ");
         $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-        $stats = $stmt->fetch();
-        
-        $this->pdf->SetFont('helvetica', '', 10);
-        
-        $html = '<table border="1" cellpadding="5">
-            <tr bgcolor="#e3f2fd">
-                <th width="60%"><b>Métrica</b></th>
-                <th width="40%"><b>Valor</b></th>
-            </tr>
-            <tr>
-                <td>Total de encuestas respondidas</td>
-                <td align="center">' . ($stats['total_encuestas'] ?? 0) . '</td>
-            </tr>
-            <tr>
-                <td>Total de profesores evaluados</td>
-                <td align="center">' . ($stats['total_profesores'] ?? 0) . '</td>
-            </tr>
-            <tr>
-                <td>Promedio general de satisfacción</td>
-                <td align="center">' . number_format($stats['promedio_general'] ?? 0, 2) . '/10</td>
-            </tr>
-            <tr>
-                <td>Desviación estándar</td>
-                <td align="center">' . number_format($stats['desviacion_general'] ?? 0, 2) . '</td>
-            </tr>
-        </table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Generar sección de Distribución de valor_texts
-     */
-    private function generarDistribucionvalor_texts($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 10, '📈 DISTRIBUCIÓN DE valor_textS', 0, 1, 'L');
-        $this->pdf->Ln(5);
-        
-        // Obtener distribución de valor_texts
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                r.valor_int,
-                COUNT(*) as frecuencia,
-                ROUND((COUNT(*) * 100.0 / (
-                    SELECT COUNT(*) 
-                    FROM encuestas e2 
-                    JOIN valor_texts r2 ON e2.id = r2.encuesta_id 
-                    JOIN preguntas p2 ON r2.pregunta_id = p2.id 
-                    WHERE e2.curso_id = :curso_id 
-                    AND DATE(e2.fecha_envio) = :fecha 
-                    AND p2.tipo = 'escala'
-                )), 1) as porcentaje
-            FROM encuestas e
-            JOIN valor_texts r ON e.id = r.encuesta_id
-            JOIN preguntas p ON r.pregunta_id = p.id
-            WHERE e.curso_id = :curso_id
-            AND DATE(e.fecha_envio) = :fecha
-            AND p.tipo = 'escala'
-            GROUP BY r.valor_int
-            ORDER BY r.valor_int DESC
-        ");
-        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-        $distribucion = $stmt->fetchAll();
-        
-        $this->pdf->SetFont('helvetica', '', 10);
-        
-        $html = '<table border="1" cellpadding="5">
-            <tr bgcolor="#e8f5e8">
-                <th width="25%"><b>Puntuación</b></th>
-                <th width="25%"><b>Frecuencia</b></th>
-                <th width="25%"><b>Porcentaje</b></th>
-                <th width="25%"><b>Nivel</b></th>
-            </tr>';
-        
-        foreach ($distribucion as $dist) {
-            $nivel = $this->obtenerNivelSatisfaccion($dist['valor_int']);
-            $color = $dist['valor_int'] >= 8 ? '#d4edda' : ($dist['valor_int'] >= 6 ? '#fff3cd' : '#f8d7da');
-            
-            $html .= '<tr bgcolor="' . $color . '">
-                <td align="center"><b>' . $dist['valor_int'] . '</b></td>
-                <td align="center">' . $dist['frecuencia'] . '</td>
-                <td align="center">' . $dist['porcentaje'] . '%</td>
-                <td align="center">' . $nivel . '</td>
-            </tr>';
-        }
-        
-        $html .= '</table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Generar sección de Estadísticas Detalladas
-     */
-    private function generarEstadisticasDetalladas($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 10, '📋 ESTADÍSTICAS DETALLADAS', 0, 1, 'L');
-        $this->pdf->Ln(5);
-        
-        // Obtener estadísticas por profesor
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                p.nombre,
-                COUNT(DISTINCT e.id) as total_encuestas,
-                COUNT(DISTINCT r.pregunta_id) as total_preguntas,
-                AVG(r.valor_int) as promedio,
-                MIN(r.valor_int) as minimo,
-                MAX(r.valor_int) as maximo
-            FROM profesores p
-            JOIN valor_texts r ON p.id = r.profesor_id
-            JOIN encuestas e ON r.encuesta_id = e.id
-            JOIN preguntas pr ON r.pregunta_id = pr.id
-            WHERE e.curso_id = :curso_id
-            AND DATE(e.fecha_envio) = :fecha
-            AND pr.tipo = 'escala'
-            GROUP BY p.id, p.nombre
-            ORDER BY promedio DESC
-        ");
-        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-        $profesores = $stmt->fetchAll();
-        
-        $this->pdf->SetFont('helvetica', '', 9);
-        
-        $html = '<table border="1" cellpadding="4">
-            <tr bgcolor="#f0f8ff">
-                <th width="30%"><b>Profesor</b></th>
-                <th width="15%"><b>Encuestas</b></th>
-                <th width="15%"><b>Preguntas</b></th>
-                <th width="15%"><b>Promedio</b></th>
-                <th width="12%"><b>Mín</b></th>
-                <th width="13%"><b>Máx</b></th>
-            </tr>';
-        
-        foreach ($profesores as $prof) {
-            $color = $prof['promedio'] >= 8 ? '#d4edda' : ($prof['promedio'] >= 6 ? '#fff3cd' : '#f8d7da');
-            
-            $html .= '<tr bgcolor="' . $color . '">
-                <td>' . htmlspecialchars($prof['nombre']) . '</td>
-                <td align="center">' . $prof['total_encuestas'] . '</td>
-                <td align="center">' . $prof['total_preguntas'] . '</td>
-                <td align="center"><b>' . number_format($prof['promedio'], 2) . '</b></td>
-                <td align="center">' . $prof['minimo'] . '</td>
-                <td align="center">' . $prof['maximo'] . '</td>
-            </tr>';
-        }
-        
-        $html .= '</table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Generar sección de Preguntas Críticas
-     */
-    private function generarPreguntasCriticas($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 10, '⚠️ PREGUNTAS CRÍTICAS', 0, 1, 'L');
-        $this->pdf->Ln(5);
-        
-        // Obtener preguntas con bajo rendimiento
-        $stmt = $this->pdo->prepare("
-            SELECT 
-                p.texto,
-                p.seccion,
-                COUNT(r.id) as total_valor_texts,
-                AVG(r.valor_int) as promedio,
-                STDDEV(r.valor_int) as desviacion_estandar,
-                SUM(CASE WHEN r.valor_int <= 5 THEN 1 ELSE 0 END) as valor_texts_bajas
-            FROM preguntas p
-            JOIN valor_texts r ON p.id = r.pregunta_id
-            JOIN encuestas e ON r.encuesta_id = e.id
-            WHERE e.curso_id = :curso_id
-            AND DATE(e.fecha_envio) = :fecha
-            AND p.tipo = 'escala'
-            GROUP BY p.id, p.texto, p.seccion
-            HAVING promedio < 7
-            ORDER BY promedio ASC, valor_texts_bajas DESC
-            LIMIT 10
-        ");
-        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-        $preguntas_criticas = $stmt->fetchAll();
-        
-        if (empty($preguntas_criticas)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, '✅ No se encontraron preguntas críticas (todas las preguntas tienen puntuación >= 7)', 0, 1, 'L');
-        } else {
-            $this->pdf->SetFont('helvetica', '', 8);
-            
-            $html = '<table border="1" cellpadding="3">
-                <tr bgcolor="#ffe6e6">
-                    <th width="50%"><b>Pregunta</b></th>
-                    <th width="10%"><b>Sección</b></th>
-                    <th width="10%"><b>valor_texts</b></th>
-                    <th width="10%"><b>Promedio</b></th>
-                    <th width="10%"><b>Bajas</b></th>
-                    <th width="10%"><b>% Crítico</b></th>
-                </tr>';
-            
-            foreach ($preguntas_criticas as $pregunta) {
-                $porcentaje_critico = round(($pregunta['valor_texts_bajas'] / $pregunta['total_valor_texts']) * 100, 1);
-                $color = $porcentaje_critico >= 30 ? '#f8d7da' : ($porcentaje_critico >= 15 ? '#fff3cd' : '#f0f0f0');
-                
-                $html .= '<tr bgcolor="' . $color . '">
-                    <td>' . htmlspecialchars(substr($pregunta['texto'], 0, 80)) . '...</td>
-                    <td align="center">' . ucfirst($pregunta['seccion']) . '</td>
-                    <td align="center">' . $pregunta['total_valor_texts'] . '</td>
-                    <td align="center">' . number_format($pregunta['promedio'], 2) . '</td>
-                    <td align="center">' . $pregunta['valor_texts_bajas'] . '</td>
-                    <td align="center">' . $porcentaje_critico . '%</td>
-                </tr>';
-            }
-            
-            $html .= '</table>';
-            
-            $this->pdf->writeHTML($html, true, false, true, false, '');
-        }
-        
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * ==========================================
-     * NUEVOS MÉTODOS QUE REPLICAN LA PÁGINA WEB
-     * ==========================================
-     */
-    
-    /**
-     * Generar Resumen Ejecutivo idéntico a la página web
-     */
-    private function generarResumenEjecutivoReal($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253); // bg-primary
-        $this->pdf->SetTextColor(255, 255, 255); // text-white
-        $this->pdf->Cell(0, 12, '   RESUMEN EJECUTIVO - ' . date('d/m/Y', strtotime($fecha)), 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0); // Reset color
-        $this->pdf->Ln(5);
-        
-        // Obtener datos del resumen ejecutivo igual que en reportes.php
-        $resumen_ejecutivo = $this->obtenerResumenEjecutivoCompleto($curso_id, $fecha);
-        
-        if (!$resumen_ejecutivo) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No hay datos disponibles para el resumen ejecutivo', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // 1. KPIs principales (6 tarjetas como en la web)
-        $this->generarKPIsPrincipales($resumen_ejecutivo);
-        
-        // 2. Estadísticas descriptivas (tabla de la izquierda)
-        $this->generarEstadisticasDescriptivas($resumen_ejecutivo);
-        
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Generar KPIs principales como tarjetas de colores
-     */
-    private function generarKPIsPrincipales($resumen_ejecutivo) {
-        $this->pdf->SetFont('helvetica', 'B', 11);
-        $this->pdf->Cell(0, 8, '📊 Indicadores Clave de Rendimiento', 0, 1, 'L');
-        $this->pdf->Ln(3);
-        
-        $stats = $resumen_ejecutivo['stats'];
-        
-        // Crear tabla HTML con los KPIs estilizada como las tarjetas
-        $html = '<table cellpadding="8" cellspacing="3">
-            <tr>
-                <td bgcolor="#e3f2fd" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#0d6efd; font-weight:bold;">' . $stats['total_encuestas_global'] . '</span><br>
-                    <span style="font-size:8px; color:#6c757d;">Encuestas</span>
-                </td>
-                <td bgcolor="#d1e7dd" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#198754; font-weight:bold;">' . $stats['total_profesores_evaluados'] . '</span><br>
-                    <span style="font-size:8px; color:#6c757d;">Profesores</span>
-                </td>
-                <td bgcolor="#cff4fc" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#0dcaf0; font-weight:bold;">' . round($stats['promedio_general'], 1) . '</span><br>
-                    <span style="font-size:8px; color:#6c757d;">Promedio</span>
-                </td>
-                <td bgcolor="#fff3cd" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#ffc107; font-weight:bold;">' . $resumen_ejecutivo['percentiles']['mediana'] . '</span><br>
-                    <span style="font-size:8px; color:#6c757d;">Mediana</span>
-                </td>
-                <td bgcolor="#f8f9fa" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#6c757d; font-weight:bold;">' . round($stats['desviacion_general'], 1) . '</span><br>
-                    <span style="font-size:8px; color:#6c757d;">Desv. Est.</span>
-                </td>
-                <td bgcolor="#212529" align="center" width="16.66%">
-                    <span style="font-size:16px; color:#ffffff; font-weight:bold;">' . $stats['total_valor_texts_escala'] . '</span><br>
-                    <span style="font-size:8px; color:#ffffff;">valor_texts</span>
-                </td>
-            </tr>
-        </table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(8);
-    }
-    
-    /**
-     * Generar estadísticas descriptivas como tabla
-     */
-    private function generarEstadisticasDescriptivas($resumen_ejecutivo) {
-        $this->pdf->SetFont('helvetica', 'B', 11);
-        $this->pdf->Cell(0, 8, '📊 Estadísticas Descriptivas', 0, 1, 'L');
-        $this->pdf->Ln(3);
-        
-        $stats = $resumen_ejecutivo['stats'];
-        $percentiles = $resumen_ejecutivo['percentiles'];
-        
-        // Calcular coeficiente de variación
-        $cv = $stats['promedio_general'] > 0 ? 
-             round(($stats['desviacion_general'] / $stats['promedio_general']) * 100, 1) : 0;
-        $cv_color = $cv < 20 ? '#d1e7dd' : ($cv < 30 ? '#fff3cd' : '#f8d7da');
-          $html = '<table border="1" cellpadding="5">
-            <tr bgcolor="#f8f9fa">
-                <td width="50%"><b>Rango:</b></td>
-                <td width="50%">
-                    <span bgcolor="#dc3545">' . $stats['valor_minimo'] . '</span>
-                    -
-                    <span bgcolor="#198754">' . $stats['valor_maximo'] . '</span>
-                </td>
-            </tr>
-            <tr>
-                <td><b>Percentil 25:</b></td>
-                <td><span bgcolor="#0dcaf0">' . $percentiles['p25'] . '</span></td>
-            </tr>
-            <tr bgcolor="#f8f9fa">
-                <td><b>Percentil 75:</b></td>
-                <td><span bgcolor="#0dcaf0">' . $percentiles['p75'] . '</span></td>
-            </tr>
-            <tr>
-                <td><b>Coef. Variación:</b></td>
-                <td>' . $cv . '%</td>
-            </tr>
-        </table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(5);
-        
-        // Distribución de valor_texts (tabla de la derecha)
-        $this->generarDistribucionvalor_textsTabla($resumen_ejecutivo);
-    }
-    
-    /**
-     * Generar tabla de distribución de valor_texts
-     */
-    private function generarDistribucionvalor_textsTabla($resumen_ejecutivo) {
-        $this->pdf->SetFont('helvetica', 'B', 11);
-        $this->pdf->Cell(0, 8, '🥧 Distribución de valor_texts', 0, 1, 'L');
-        $this->pdf->Ln(3);
-          $html = '<table border="1" cellpadding="4">
-            <tr bgcolor="#f8f9fa">
-                <th width="33%"><b>Valor</b></th>
-                <th width="33%"><b>Frecuencia</b></th>
-                <th width="34%"><b>%</b></th>
-            </tr>';
-        
-        foreach ($resumen_ejecutivo['distribucion'] as $dist) {
-            // Colores según el valor (como en la web)
-            $color = $dist['valor_int'] >= 8 ? '#d1e7dd' : ($dist['valor_int'] >= 6 ? '#fff3cd' : '#f8d7da');
-            
-            $html .= '<tr bgcolor="' . $color . '">
-                <td align="center"><b>' . $dist['valor_int'] . '</b></td>
-                <td align="center">' . $dist['frecuencia'] . '</td>
-                <td align="center">' . round($dist['porcentaje'], 1) . '%</td>
-            </tr>';
-        }
-        
-        $html .= '</table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-    }
-    
-    /**
-     * Obtener datos completos del resumen ejecutivo igual que en reportes.php
-     */
-    private function obtenerResumenEjecutivoCompleto($curso_id, $fecha) {
-        try {
-            // Replicar exactamente la misma consulta que está en reportes.php
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    COUNT(DISTINCT e.id) as total_encuestas_global,
-                    COUNT(DISTINCT r.profesor_id) as total_profesores_evaluados,
-                    COUNT(r.id) as total_valor_texts_escala,
-                    AVG(r.valor_int) as promedio_general,
-                    STDDEV(r.valor_int) as desviacion_general,
-                    MIN(r.valor_int) as valor_minimo,
-                    MAX(r.valor_int) as valor_maximo
-                FROM encuestas e
-                JOIN valor_texts r ON e.id = r.encuesta_id
-                JOIN preguntas p ON r.pregunta_id = p.id
-                WHERE e.curso_id = :curso_id 
-                AND DATE(e.fecha_envio) = :fecha
-                AND p.tipo = 'escala'
-                AND (p.seccion = 'curso' OR p.seccion = 'profesor')
-            ");
-            $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-            $stats = $stmt->fetch();
-            
-            if (!$stats || $stats['total_encuestas_global'] == 0) {
-                return null;
-            }
-            
-            // Obtener percentiles
-            $stmt = $this->pdo->prepare("
-                SELECT r.valor_int
-                FROM encuestas e
-                JOIN valor_texts r ON e.id = r.encuesta_id
-                JOIN preguntas p ON r.pregunta_id = p.id
-                WHERE e.curso_id = :curso_id 
-                AND DATE(e.fecha_envio) = :fecha
-                AND p.tipo = 'escala'
-                AND (p.seccion = 'curso' OR p.seccion = 'profesor')
-                ORDER BY r.valor_int
-            ");
-            $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-            $valores = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            $total = count($valores);
-            $percentiles = [
-                'p25' => $total > 0 ? $valores[intval($total * 0.25)] : 0,
-                'mediana' => $total > 0 ? $valores[intval($total * 0.5)] : 0,
-                'p75' => $total > 0 ? $valores[intval($total * 0.75)] : 0
-            ];
-            
-            // Obtener distribución de valor_texts
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    r.valor_int,
-                    COUNT(*) as frecuencia,
-                    (COUNT(*) * 100.0 / :total) as porcentaje
-                FROM encuestas e
-                JOIN valor_texts r ON e.id = r.encuesta_id
-                JOIN preguntas p ON r.pregunta_id = p.id
-                WHERE e.curso_id = :curso_id 
-                AND DATE(e.fecha_envio) = :fecha
-                AND p.tipo = 'escala'
-                AND (p.seccion = 'curso' OR p.seccion = 'profesor')
-                GROUP BY r.valor_int
-                ORDER BY r.valor_int DESC
-            ");
-            $stmt->execute([
-                ':curso_id' => $curso_id, 
-                ':fecha' => $fecha,
-                ':total' => $stats['total_valor_texts_escala']
-            ]);
-            $distribucion = $stmt->fetchAll();
-            
-            return [
-                'stats' => $stats,
-                'percentiles' => $percentiles,
-                'distribucion' => $distribucion
-            ];
-            
-        } catch (Exception $e) {
-            error_log("Error obteniendo resumen ejecutivo: " . $e->getMessage());
-            return null;
-        }
-    }
-      /**
-     * Generar gráficos de evaluación usando imágenes de Chart.js
-     */
-    private function generarGraficosEvaluacionReal($curso_id, $fecha, $imagenes_graficos = []) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253); // bg-primary  
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   GRÁFICOS DE EVALUACIÓN - ' . date('d/m/Y', strtotime($fecha)), 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0); // Reset color
-        $this->pdf->Ln(5);
-        
-        if (empty($imagenes_graficos)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No se recibieron imágenes de gráficos para exportar', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // Insertar cada imagen recibida desde el frontend
-        foreach ($imagenes_graficos as $imagen) {
-            $this->insertarImagenGrafico($imagen);
-        }
-        
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Insertar imagen de gráfico en el PDF
-     */
-    private function insertarImagenGrafico($imagen_data) {
-        if (!isset($imagen_data['data']) || !isset($imagen_data['titulo'])) {
-            return;
-        }
-        
-        // Título del gráfico
-        $this->pdf->SetFont('helvetica', 'B', 12);
-        $this->pdf->Cell(0, 8, $imagen_data['titulo'], 0, 1, 'C');
-        $this->pdf->Ln(5);
-        
-        try {
-            // Decodificar imagen base64
-            $imagen_binary = base64_decode($imagen_data['data']);
-            
-            // Crear archivo temporal
-            $temp_file = tempnam(sys_get_temp_dir(), 'chart_') . '.png';
-            file_put_contents($temp_file, $imagen_binary);
-            
-            // Insertar imagen en el PDF
-            $this->pdf->Image($temp_file, 20, null, 170, 0, 'PNG');
-            
-            // Eliminar archivo temporal
-            unlink($temp_file);
-            
-            $this->pdf->Ln(10);
-            
-        } catch (Exception $e) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 8, 'Error al insertar imagen: ' . $e->getMessage(), 0, 1, 'L');            $this->pdf->Ln(5);
-        }
-    }    /**
-     * Generar estadísticas detalladas con colores y barras de progreso como en la web
-     */
-    private function generarEstadisticasDetalladasReal($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   📊 ESTADÍSTICAS DETALLADAS', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        // Obtener datos detallados por profesor
-        $profesores_stats = $this->obtenerEstadisticasPorProfesor($curso_id, $fecha);
-        
-        if (empty($profesores_stats)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No hay datos de estadísticas por profesor para esta fecha', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // Generar tabla de estadísticas por profesor con colores y barras
-        $this->generarTablaEstadisticasProfesores($profesores_stats);
-        
-        // Espacio entre secciones
-        $this->pdf->Ln(8);
-        
-        // Generar estadísticas por pregunta/sección
-        $this->generarEstadisticasPorSeccion($curso_id, $fecha);
-        
-        $this->pdf->Ln(10);
-    }
-    
-    private function generarComentariosCursoReal($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   COMENTARIOS DEL CURSO', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        $this->pdf->SetFont('helvetica', '', 10);
-        $this->pdf->Cell(0, 10, 'Comentarios del curso ID: ' . $curso_id . ' en fecha: ' . $fecha, 0, 1, 'L');
-        $this->pdf->Ln(10);
-    }
-    
-    private function generarComentariosProfesoresReal($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(25, 135, 84);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   COMENTARIOS DE PROFESORES', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        $this->pdf->SetFont('helvetica', '', 10);
-        $this->pdf->Cell(0, 10, 'Comentarios de profesores para curso ID: ' . $curso_id . ' en fecha: ' . $fecha, 0, 1, 'L');
-        $this->pdf->Ln(10);
-    }
-    
-    private function generarPreguntasCriticasReal($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(220, 53, 69);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   ⚠️ PREGUNTAS CRÍTICAS', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        $this->pdf->SetFont('helvetica', '', 10);
-        $this->pdf->Cell(0, 10, 'Preguntas críticas para curso ID: ' . $curso_id . ' en fecha: ' . $fecha, 0, 1, 'L');
-        $this->pdf->Ln(10);
-    }
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    /**
-     * ==========================================
-     * NUEVOS MÉTODOS - RÉPLICA EXACTA DE LA IMAGEN
-     * ==========================================
-     */
-    
-    /**
-     * Generar header principal como en la imagen
-     */
-    private function generarHeaderPrincipal($curso, $fecha) {
-        // Fondo oscuro como en la imagen
-        $this->pdf->SetFillColor(52, 58, 64); // Dark background
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->SetFont('helvetica', 'B', 16);
-        $this->pdf->Cell(0, 15, '📊 Gráficos de Evaluación - Fecha: ' . date('d-m-Y', strtotime($fecha)) . ' (3 gráficos)', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0); // Reset color
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Generar sección de gráficos - IGUAL QUE LA IMAGEN
-     */
-    private function generarSeccionGraficos($curso_id, $fecha, $imagenes_graficos) {
-        if (empty($imagenes_graficos)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No se recibieron gráficos para mostrar', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
+        // Si no hay datos, no mostrar nada
+        if (!$stats || $stats['total_encuestas'] == 0) { 
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 10, 'No hay datos disponibles para el resumen ejecutivo.', 0, 1);
+            return; 
         }
         
-        // Calcular cuántos gráficos por fila (3 columnas como en la imagen)
-        $graficos_por_fila = 3;
-        $ancho_grafico = 180 / $graficos_por_fila; // Dividir el ancho disponible
-        $contador = 0;
-        
-        foreach ($imagenes_graficos as $imagen) {
-            if ($contador % $graficos_por_fila == 0 && $contador > 0) {
-                $this->pdf->Ln(80); // Nueva fila
-            }
-            
-            $x = 15 + ($contador % $graficos_por_fila) * $ancho_grafico;
-            $y = $this->pdf->GetY();
-            
-            // Insertar gráfico con tamaño específico
-            $this->insertarGraficoEnPosicion($imagen, $x, $y, $ancho_grafico - 5);
-            
-            $contador++;
-        }
-        
-        $this->pdf->Ln(90); // Espacio después de todos los gráficos
-    }
-    
-    /**
-     * Insertar gráfico en posición específica
-     */
-    private function insertarGraficoEnPosicion($imagen_data, $x, $y, $ancho) {
-        if (!isset($imagen_data['data']) || !isset($imagen_data['titulo'])) {
-            return;
-        }
-        
-        try {
-            // Decodificar imagen base64
-            $imagen_binary = base64_decode($imagen_data['data']);
-            
-            // Crear archivo temporal
-            $temp_file = tempnam(sys_get_temp_dir(), 'chart_') . '.png';
-            file_put_contents($temp_file, $imagen_binary);
-            
-            // Título del gráfico encima
-            $this->pdf->SetFont('helvetica', 'B', 9);
-            $this->pdf->SetXY($x, $y - 5);
-            $this->pdf->Cell($ancho, 5, $imagen_data['titulo'], 0, 0, 'C');
-            
-            // Insertar imagen
-            $this->pdf->Image($temp_file, $x, $y, $ancho, 0, 'PNG');
-            
-            // Eliminar archivo temporal
-            unlink($temp_file);
-            
-        } catch (Exception $e) {
-            // En caso de error, mostrar un rectángulo placeholder
-            $this->pdf->SetFont('helvetica', '', 8);
-            $this->pdf->SetXY($x, $y);
-            $this->pdf->Cell($ancho, 40, 'Error: gráfico no disponible', 1, 0, 'C');
-        }
-    }
-    
-    /**
-     * Generar tabla de estadísticas detalladas - IGUAL QUE LA IMAGEN
-     */
-    private function generarSeccionEstadisticasTabla($curso_id, $fecha) {
-        // Header de la sección
-        $this->pdf->SetFillColor(52, 58, 64); // Dark background
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 12, '📊 Estadísticas Detalladas', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        // Obtener datos reales de la base de datos
-        $estadisticas = $this->obtenerEstadisticasRealesParaTabla($curso_id, $fecha);
-        
-        if (empty($estadisticas)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No hay datos disponibles para las estadísticas detalladas', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // Crear tabla con colores exactos como en la imagen
-        $html = '<table border="1" cellpadding="6" cellspacing="0">
-            <tr bgcolor="#343a40" style="color: white;">
-                <th width="8%"><b>Tipo</b></th>
-                <th width="32%"><b>Curso/Profesor</b></th>
-                <th width="12%"><b>Encuestas</b></th>
-                <th width="12%"><b>Preguntas</b></th>
-                <th width="12%"><b>Puntuación</b></th>
-                <th width="24%"><b>% Aprovechamiento</b></th>
-            </tr>';
-        
-        foreach ($estadisticas as $stat) {
-            // Determinar color de fondo según puntuación (como en la imagen)
-            $puntuacion = $stat['puntuacion'];
-            if ($puntuacion >= 8) {
-                $bg_color = '#d4edda'; // Verde
-                $aprovechamiento_color = '#28a745';
-            } elseif ($puntuacion >= 6) {
-                $bg_color = '#fff3cd'; // Amarillo
-                $aprovechamiento_color = '#ffc107';
-            } else {
-                $bg_color = '#f8d7da'; // Rojo
-                $aprovechamiento_color = '#dc3545';
-            }
-            
-            // Calcular porcentaje de aprovechamiento
-            $porcentaje = round(($puntuacion / 10) * 100, 1);
-            
-            // Crear barra de progreso visual
-            $barra_progreso = $this->crearBarraProgreso($porcentaje, $aprovechamiento_color);
-            
-            $html .= '<tr bgcolor="' . $bg_color . '">
-                <td align="center"><b>' . htmlspecialchars($stat['tipo']) . '</b></td>
-                <td>' . htmlspecialchars($stat['nombre']) . '</td>
-                <td align="center">' . $stat['encuestas'] . '</td>
-                <td align="center">' . $stat['preguntas'] . '</td>
-                <td align="center"><b>' . number_format($puntuacion, 1) . '</b></td>
-                <td>' . $barra_progreso . '</td>
-            </tr>';
-        }
-        
-        $html .= '</table>';
-        
-        $this->pdf->writeHTML($html, true, false, true, false, '');
-        $this->pdf->Ln(15);
-    }
-      /**
-     * Crear barra de progreso visual para la tabla
-     */
-    private function crearBarraProgreso($porcentaje, $color) {
-        $barras_llenas = intval($porcentaje / 10); // Cada barra representa 10%
-        $barra_html = '';
-        
-        // Crear barras llenas
-        for ($i = 0; $i < $barras_llenas; $i++) {
-            $barra_html .= '<span style="background-color:' . $color . '; color:white;">█</span>';
-        }
-        
-        // Crear barras vacías
-        for ($i = $barras_llenas; $i < 10; $i++) {
-            $barra_html .= '<span style="color:#e9ecef;">█</span>';
-        }
-        
-        return $barra_html . ' ' . $porcentaje . '%';
-    }
-    
-    /**
-     * Generar tabla de estadísticas por profesores con colores y barras
-     */
-    private function generarTablaEstadisticasProfesores($profesores_stats) {
-        // Header de la tabla
-        $this->pdf->SetFont('helvetica', 'B', 11);
-        $this->pdf->SetFillColor(248, 249, 250);
-        $this->pdf->SetTextColor(33, 37, 41);
-        
-        // Anchos de columnas (total 190mm)
-        $col_widths = [50, 40, 35, 35, 30];
-        
-        $this->pdf->Cell($col_widths[0], 10, 'Profesor', 1, 0, 'L', true);
-        $this->pdf->Cell($col_widths[1], 10, 'valor_texts', 1, 0, 'C', true);
-        $this->pdf->Cell($col_widths[2], 10, 'Promedio', 1, 0, 'C', true);
-        $this->pdf->Cell($col_widths[3], 10, 'Satisfacción', 1, 0, 'C', true);
-        $this->pdf->Cell($col_widths[4], 10, 'Estado', 1, 1, 'C', true);
-        
-        // Datos de la tabla
-        $this->pdf->SetFont('helvetica', '', 10);
-        
-        foreach ($profesores_stats as $profesor) {
-            $y_position = $this->pdf->GetY();
-            
-            // Color de fondo alternado
-            $fill = (count($profesores_stats) % 2 == 0) ? true : false;
-            $this->pdf->SetFillColor(255, 255, 255);
-            
-            // Nombre del profesor
-            $this->pdf->Cell($col_widths[0], 12, $profesor['nombre'], 1, 0, 'L', $fill);
-            
-            // Número de valor_texts
-            $this->pdf->Cell($col_widths[1], 12, $profesor['total_valor_texts'], 1, 0, 'C', $fill);
-            
-            // Promedio con color según valor
-            $promedio = number_format($profesor['promedio'], 1);
-            $color_promedio = $this->obtenerColorPromedio($profesor['promedio']);
-            $this->pdf->SetFillColor($color_promedio[0], $color_promedio[1], $color_promedio[2]);
-            $this->pdf->SetTextColor(255, 255, 255);
-            $this->pdf->Cell($col_widths[2], 12, $promedio, 1, 0, 'C', true);
-            $this->pdf->SetTextColor(33, 37, 41);
-            
-            // Barra de satisfacción (porcentaje visual)
-            $satisfaccion = $profesor['satisfaccion'];
-            $this->generarBarraSatisfaccion($col_widths[3], 12, $satisfaccion);
-            
-            // Estado con badge de color
-            $estado = $this->obtenerEstadoProfesor($profesor['promedio']);
-            $color_estado = $this->obtenerColorEstado($estado);
-            $this->pdf->SetFillColor($color_estado[0], $color_estado[1], $color_estado[2]);
-            $this->pdf->SetTextColor(255, 255, 255);
-            $this->pdf->Cell($col_widths[4], 12, $estado, 1, 1, 'C', true);
-            $this->pdf->SetTextColor(33, 37, 41);
-        }
-        
-        $this->pdf->Ln(5);
-    }
-    
-    /**
-     * Generar barra de progreso visual para satisfacción
-     */
-    private function generarBarraSatisfaccion($width, $height, $porcentaje) {
-        $x = $this->pdf->GetX();
-        $y = $this->pdf->GetY();
-        
-        // Fondo de la barra (gris claro)
-        $this->pdf->SetFillColor(233, 236, 239);
-        $this->pdf->Rect($x + 2, $y + 3, $width - 4, $height - 6, 'F');
-        
-        // Barra de progreso (color según porcentaje)
-        $barra_width = ($width - 4) * ($porcentaje / 100);
-        $color_barra = $this->obtenerColorSatisfaccion($porcentaje);
-        $this->pdf->SetFillColor($color_barra[0], $color_barra[1], $color_barra[2]);
-        $this->pdf->Rect($x + 2, $y + 3, $barra_width, $height - 6, 'F');
-        
-        // Texto del porcentaje
-        $this->pdf->SetTextColor(33, 37, 41);
-        $this->pdf->SetXY($x, $y);
-        $this->pdf->Cell($width, $height, $porcentaje . '%', 1, 0, 'C');
-        
-        // Mover cursor a la siguiente posición
-        $this->pdf->SetX($x + $width);
-    }
-    
-    /**
-     * Obtener color según promedio (escala 1-5)
-     */
-    private function obtenerColorPromedio($promedio) {
-        if ($promedio >= 4.5) return [34, 197, 94];  // Verde
-        if ($promedio >= 4.0) return [59, 130, 246]; // Azul
-        if ($promedio >= 3.5) return [251, 191, 36]; // Amarillo
-        if ($promedio >= 3.0) return [249, 115, 22]; // Naranja
-        return [239, 68, 68];  // Rojo
-    }
-    
-    /**
-     * Obtener color para barra de satisfacción
-     */
-    private function obtenerColorSatisfaccion($porcentaje) {
-        if ($porcentaje >= 80) return [34, 197, 94];  // Verde
-        if ($porcentaje >= 60) return [59, 130, 246]; // Azul
-        if ($porcentaje >= 40) return [251, 191, 36]; // Amarillo
-        if ($porcentaje >= 20) return [249, 115, 22]; // Naranja
-        return [239, 68, 68];  // Rojo
-    }
-    
-    /**
-     * Obtener estado del profesor según promedio
-     */
-    private function obtenerEstadoProfesor($promedio) {
-        if ($promedio >= 4.5) return 'Excelente';
-        if ($promedio >= 4.0) return 'Muy Bueno';
-        if ($promedio >= 3.5) return 'Bueno';
-        if ($promedio >= 3.0) return 'Regular';
-        return 'Deficiente';
-    }
-    
-    /**
-     * Obtener color para badge de estado
-     */
-    private function obtenerColorEstado($estado) {
-        switch ($estado) {
-            case 'Excelente': return [34, 197, 94];   // Verde
-            case 'Muy Bueno': return [59, 130, 246];  // Azul
-            case 'Bueno': return [251, 191, 36];      // Amarillo
-            case 'Regular': return [249, 115, 22];    // Naranja
-            case 'Deficiente': return [239, 68, 68];  // Rojo
-            default: return [107, 114, 128];          // Gris
-        }
-    }
-    
-    /**
-     * Generar estadísticas por sección/categoría de preguntas
-     */
-    private function generarEstadisticasPorSeccion($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 12);
-        $this->pdf->SetTextColor(33, 37, 41);
-        $this->pdf->Cell(0, 10, '📈 Estadísticas por Sección', 0, 1, 'L');
-        $this->pdf->Ln(3);
-        
-        // Obtener estadísticas por categoría
-        $stats_secciones = $this->obtenerEstadisticasPorCategoria($curso_id, $fecha);
-        
-        if (empty($stats_secciones)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 8, 'No hay datos por sección disponibles', 0, 1, 'L');
-            return;
-        }
-        
-        // Crear mini-tabla por cada sección
-        $this->pdf->SetFont('helvetica', '', 9);
-        
-        foreach ($stats_secciones as $seccion) {
-            // Título de la sección
-            $this->pdf->SetFont('helvetica', 'B', 10);
-            $this->pdf->SetFillColor(248, 249, 250);
-            $this->pdf->Cell(95, 8, $seccion['categoria'], 1, 0, 'L', true);
-            $this->pdf->Cell(30, 8, 'Promedio: ' . number_format($seccion['promedio'], 1), 1, 0, 'C');
-            $this->pdf->Cell(30, 8, 'valor_texts: ' . $seccion['total'], 1, 0, 'C');
-            
-            // Mini barra de progreso
-            $satisfaccion_seccion = ($seccion['promedio'] / 5) * 100;
-            $this->generarMiniBarra(35, 8, $satisfaccion_seccion);
-            $this->pdf->Ln();
-        }
-        
-        $this->pdf->Ln(3);
-    }
-    
-    /**
-     * Generar mini barra de progreso
-     */
-    private function generarMiniBarra($width, $height, $porcentaje) {
-        $x = $this->pdf->GetX();
-        $y = $this->pdf->GetY();
-        
-        // Fondo
-        $this->pdf->SetFillColor(233, 236, 239);
-        $this->pdf->Rect($x, $y, $width, $height, 'DF');
-        
-        // Barra
-        $barra_width = $width * ($porcentaje / 100);
-        $color = $this->obtenerColorSatisfaccion($porcentaje);
-        $this->pdf->SetFillColor($color[0], $color[1], $color[2]);
-        $this->pdf->Rect($x, $y, $barra_width, $height, 'F');
-        
-        // Borde
-        $this->pdf->SetDrawColor(0, 0, 0);
-        $this->pdf->Rect($x, $y, $width, $height, 'D');
-        
-        $this->pdf->SetX($x + $width);
-    }
-    
-    /**
-     * Obtener estadísticas reales para la tabla (replicando la imagen)
-     */
-    private function obtenerEstadisticasRealesParaTabla($curso_id, $fecha) {
-        try {
-            $estadisticas = [];
-            
-            // 1. Estadísticas del curso
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    c.nombre,
-                    COUNT(DISTINCT e.id) as total_encuestas,
-                    COUNT(DISTINCT r.pregunta_id) as total_preguntas,
-                    AVG(r.valor_int) as promedio
-                FROM cursos c
-                JOIN encuestas e ON c.id = e.curso_id
-                JOIN valor_texts r ON e.id = r.encuesta_id
-                JOIN preguntas p ON r.pregunta_id = p.id
-                WHERE c.id = :curso_id
-                AND DATE(e.fecha_envio) = :fecha
-                AND p.tipo = 'escala'
-                AND p.seccion = 'curso'
-                GROUP BY c.id, c.nombre
-            ");
-            $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-            $curso_stats = $stmt->fetch();
-            
-            if ($curso_stats) {
-                $estadisticas[] = [
-                    'tipo' => 'CURSO',
-                    'nombre' => $curso_stats['nombre'],
-                    'encuestas' => $curso_stats['total_encuestas'],
-                    'preguntas' => $curso_stats['total_preguntas'],
-                    'puntuacion' => $curso_stats['promedio']
-                ];
-            }
-            
-            // 2. Estadísticas por profesor
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    p.nombre,
-                    COUNT(DISTINCT e.id) as total_encuestas,
-                    COUNT(DISTINCT r.pregunta_id) as total_preguntas,
-                    AVG(r.valor_int) as promedio
-                FROM profesores p
-                JOIN valor_texts r ON p.id = r.profesor_id
-                JOIN encuestas e ON r.encuesta_id = e.id
-                JOIN preguntas pr ON r.pregunta_id = pr.id
-                WHERE e.curso_id = :curso_id
-                AND DATE(e.fecha_envio) = :fecha
-                AND pr.tipo = 'escala'
-                AND pr.seccion = 'profesor'
-                GROUP BY p.id, p.nombre
-                ORDER BY promedio DESC
-            ");
-            $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
-            $profesores_stats = $stmt->fetchAll();
-            
-            foreach ($profesores_stats as $prof) {
-                $estadisticas[] = [
-                    'tipo' => 'PROFESOR',
-                    'nombre' => $prof['nombre'],
-                    'encuestas' => $prof['total_encuestas'],
-                    'preguntas' => $prof['total_preguntas'],
-                    'puntuacion' => $prof['promedio']
-                ];
-            }
-              return $estadisticas;
-            
-        } catch (Exception $e) {
-            error_log("Error obteniendo estadísticas: " . $e->getMessage());
-            return [];
-        }
-    }
-    
-    /**
-     * SECCIONES DE COMENTARIOS - Replicar formato de la web
-     */
-    
-    private function generarSeccionComentariosCurso($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   💬 COMENTARIOS DEL CURSO', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        // Obtener comentarios del curso
-        $comentarios = $this->obtenerComentariosCurso($curso_id, $fecha);
-        
-        if (empty($comentarios)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No hay comentarios disponibles para este curso en la fecha especificada.', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // Generar tarjetas de comentarios
-        $this->generarTarjetasComentarios($comentarios, 'curso');
-        
-        $this->pdf->Ln(10);
-    }
-    
-    private function generarSeccionComentariosProfesores($curso_id, $fecha) {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->SetFillColor(13, 110, 253);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 12, '   👥 COMENTARIOS DE PROFESORES', 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        $this->pdf->Ln(5);
-        
-        // Obtener comentarios por profesor
-        $comentarios_profesores = $this->obtenerComentariosProfesores($curso_id, $fecha);
-        
-        if (empty($comentarios_profesores)) {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 10, 'No hay comentarios de profesores disponibles para este curso en la fecha especificada.', 0, 1, 'L');
-            $this->pdf->Ln(10);
-            return;
-        }
-        
-        // Generar sección por cada profesor
-        foreach ($comentarios_profesores as $profesor_id => $datos_profesor) {
-            $this->generarSeccionProfesor($datos_profesor);
-        }
-        
-        $this->pdf->Ln(10);
-    }
-    
-    /**
-     * Obtener comentarios del curso
-     */
-    private function obtenerComentariosCurso($curso_id, $fecha) {
-        try {
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    r.valor_text,
-                    r.fecha_valor_text,
-                    p.pregunta,
-                    pr.nombre as nombre_pregunta,
-                    CONCAT(prof.nombre, ' ', prof.apellido) as evaluador
-                FROM valor_texts r
-                JOIN preguntas pr ON r.pregunta_id = pr.id
-                JOIN encuestas e ON r.encuesta_id = e.id
-                LEFT JOIN profesores prof ON r.profesor_id = prof.id
-                WHERE e.curso_id = :curso_id 
-                AND DATE(e.fecha_envio) = :fecha
-                AND r.valor_text IS NOT NULL 
-                AND r.valor_text != ''
-                AND r.valor_text NOT REGEXP '^[1-5]$'
-                AND LENGTH(r.valor_text) > 10
-                ORDER BY r.fecha_valor_text DESC
-                LIMIT 20
-            ");
-            
-            $stmt->execute([
-                ':curso_id' => $curso_id,
-                ':fecha' => $fecha
-            ]);
-            
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-    
-    /**
-     * Obtener comentarios agrupados por profesor
-     */
-    private function obtenerComentariosProfesores($curso_id, $fecha) {
-        try {
-            $stmt = $this->pdo->prepare("
-                SELECT 
-                    prof.id as profesor_id,
-                    CONCAT(prof.nombre, ' ', prof.apellido) as nombre_profesor,
-                    prof.departamento,
-                    r.valor_text,
-                    r.fecha_valor_text,
-                    pr.pregunta,
-                    AVG(CASE WHEN r2.valor_text REGEXP '^[1-5]$' THEN CAST(r2.valor_text AS DECIMAL(3,2)) END) as promedio_profesor
-                FROM profesores prof
-                LEFT JOIN valor_texts r ON prof.id = r.profesor_id
-                LEFT JOIN valor_texts r2 ON prof.id = r2.profesor_id
-                LEFT JOIN preguntas pr ON r.pregunta_id = pr.id
-                LEFT JOIN encuestas e ON r.encuesta_id = e.id
-                WHERE e.curso_id = :curso_id 
-                AND DATE(e.fecha_envio) = :fecha
-                AND r.valor_text IS NOT NULL 
-                AND r.valor_text != ''
-                AND r.valor_text NOT REGEXP '^[1-5]$'
-                AND LENGTH(r.valor_text) > 10
-                GROUP BY prof.id, prof.nombre, prof.apellido, prof.departamento, r.valor_text, r.fecha_valor_text, pr.pregunta
-                ORDER BY prof.nombre, r.fecha_valor_text DESC
-            ");
-            
-            $stmt->execute([
-                ':curso_id' => $curso_id,
-                ':fecha' => $fecha
-            ]);
-            
-            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Agrupar por profesor
-            $comentarios_agrupados = [];
-            foreach ($resultados as $fila) {
-                $profesor_id = $fila['profesor_id'];
-                
-                if (!isset($comentarios_agrupados[$profesor_id])) {
-                    $comentarios_agrupados[$profesor_id] = [
-                        'nombre' => $fila['nombre_profesor'],
-                        'departamento' => $fila['departamento'],
-                        'promedio' => floatval($fila['promedio_profesor'] ?? 0),
-                        'comentarios' => []
-                    ];
-                }
-                
-                if (!empty($fila['valor_text'])) {
-                    $comentarios_agrupados[$profesor_id]['comentarios'][] = [
-                        'texto' => $fila['valor_text'],
-                        'pregunta' => $fila['pregunta'],
-                        'fecha' => $fila['fecha_valor_text']
-                    ];
-                }
-            }
-            
-            return $comentarios_agrupados;
-            
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-    
-    /**
-     * Generar tarjetas de comentarios estilo web
-     */
-    private function generarTarjetasComentarios($comentarios, $tipo = 'curso') {
-        $this->pdf->SetFont('helvetica', '', 10);
-        
-        $comentarios_por_pagina = 0;
-        $max_comentarios_por_pagina = 8;
-        
-        foreach ($comentarios as $comentario) {
-            // Verificar si necesitamos nueva página
-            if ($comentarios_por_pagina >= $max_comentarios_por_pagina || $this->pdf->GetY() > 250) {
-                $this->pdf->AddPage();
-                $comentarios_por_pagina = 0;
-            }
-            
-            // Tarjeta de comentario
-            $this->generarTarjetaComentario($comentario, $tipo);
-            $comentarios_por_pagina++;
-        }
-    }
-    
-    /**
-     * Generar una tarjeta individual de comentario
-     */
-    private function generarTarjetaComentario($comentario, $tipo) {
-        $x_inicial = $this->pdf->GetX();
-        $y_inicial = $this->pdf->GetY();
-        
-        // Fondo de la tarjeta
-        $this->pdf->SetFillColor(248, 249, 250);
-        $this->pdf->SetDrawColor(222, 226, 230);
-        $this->pdf->Rect($x_inicial, $y_inicial, 190, 25, 'DF');
-        
-        // Icono y header
-        $this->pdf->SetXY($x_inicial + 5, $y_inicial + 3);
-        $this->pdf->SetFont('helvetica', 'B', 10);
-        $this->pdf->SetTextColor(13, 110, 253);
-        
-        $icono = ($tipo === 'curso') ? '💬' : '👤';
-        $header = ($tipo === 'curso') ? 'Comentario General' : 'Evaluación Profesor';
-        $this->pdf->Cell(0, 5, $icono . ' ' . $header, 0, 1, 'L');
-        
-        // Evaluador/Fecha
-        if (isset($comentario['evaluador']) && !empty($comentario['evaluador'])) {
-            $this->pdf->SetXY($x_inicial + 5, $y_inicial + 8);
-            $this->pdf->SetFont('helvetica', '', 8);
-            $this->pdf->SetTextColor(108, 117, 125);
-            $this->pdf->Cell(0, 4, 'Por: ' . $comentario['evaluador'] . ' | ' . date('d/m/Y', strtotime($comentario['fecha_valor_text'])), 0, 1, 'L');
-        }
-        
-        // Texto del comentario
-        $this->pdf->SetXY($x_inicial + 5, $y_inicial + 13);
-        $this->pdf->SetFont('helvetica', '', 9);
-        $this->pdf->SetTextColor(33, 37, 41);
-        
-        // Limitar texto a 160 caracteres
-        $texto = $comentario['valor_text'] ?? $comentario['texto'] ?? '';
-        if (strlen($texto) > 160) {
-            $texto = substr($texto, 0, 157) . '...';
-        }
-        
-        $this->pdf->MultiCell(180, 4, $texto, 0, 'L');
-        
-        // Espacio entre tarjetas
-        $this->pdf->SetY($y_inicial + 28);
-    }
-    
-    /**
-     * Generar sección de un profesor específico
-     */
-    private function generarSeccionProfesor($datos_profesor) {
-        // Header del profesor
-        $this->pdf->SetFont('helvetica', 'B', 12);
-        $this->pdf->SetFillColor(33, 37, 41);
-        $this->pdf->SetTextColor(255, 255, 255);
-        $this->pdf->Cell(0, 10, '   👨‍🏫 ' . $datos_profesor['nombre'], 0, 1, 'L', true);
-        $this->pdf->SetTextColor(0, 0, 0);
-        
-        // Info del profesor
-        $this->pdf->SetFont('helvetica', '', 10);
-        $this->pdf->SetTextColor(108, 117, 125);
-        $info_profesor = '';
-        if (!empty($datos_profesor['departamento'])) {
-            $info_profesor .= 'Departamento: ' . $datos_profesor['departamento'] . ' | ';
-        }
-        $info_profesor .= 'Promedio: ' . number_format($datos_profesor['promedio'], 1) . '/5.0';
-        
-        $this->pdf->Cell(0, 8, $info_profesor, 0, 1, 'L');
+        // Título de la sección
+        $this->pdf->SetFont('dejavusans', 'B', 14);
+        $this->pdf->Cell(0, 10, 'RESUMEN EJECUTIVO', 0, 1, 'L');
         $this->pdf->Ln(2);
         
-        // Comentarios del profesor
-        if (!empty($datos_profesor['comentarios'])) {
-            $this->generarTarjetasComentarios($datos_profesor['comentarios'], 'profesor');
-        } else {
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->SetTextColor(108, 117, 125);
-            $this->pdf->Cell(0, 8, 'No hay comentarios específicos para este profesor.', 0, 1, 'L');
+        // Diseño de dos columnas para mejorar uso del espacio
+        $pageWidth = $this->pdf->getPageWidth();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $contentWidth = $pageWidth - $leftMargin - $rightMargin;
+        
+        // Ancho de la primera sección (resumen)
+        $section1Width = $contentWidth * 0.48;
+        $section2Width = $contentWidth * 0.48;
+        $gapWidth = $contentWidth - $section1Width - $section2Width;
+        
+        // Guardar posición Y inicial
+        $initialY = $this->pdf->GetY();
+        
+        // Primera columna: Resumen estadístico
+        $headers = ['Métrica', 'Valor'];
+        $data = [
+            ['Total Encuestas', $stats['total_encuestas']],
+            ['Total Profesores Evaluados', $stats['total_profesores']],
+            ['Promedio General (1-10)', number_format($stats['promedio_general'], 2)],
+            ['Desviación Estándar', number_format($stats['desviacion_general'], 2)]
+        ];
+        $widths = [100, 30];
+        
+        // Añadir estadísticas por categoría si hay espacio
+        $stmt_cat = $this->pdo->prepare("
+            SELECT 
+                COALESCE(pr.seccion, 'General') as categoria,
+                AVG(r.valor_int) as promedio
+            FROM respuestas r 
+            JOIN preguntas pr ON r.pregunta_id = pr.id
+            JOIN encuestas e ON r.encuesta_id = e.id
+            WHERE e.curso_id = :curso_id AND DATE(e.fecha_envio) = :fecha
+            GROUP BY pr.seccion
+            HAVING promedio > 0
+            ORDER BY promedio DESC
+            LIMIT 3
+        ");
+        $stmt_cat->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $categorias = $stmt_cat->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (!empty($categorias)) {
+            $data[] = ['', '']; // Espacio
+            $data[] = ['Categorías mejor evaluadas', ''];
+            
+            foreach ($categorias as $cat) {
+                $data[] = [$cat['categoria'], number_format($cat['promedio'], 2)];
+            }
         }
-          $this->pdf->Ln(8);
+        
+        // Generar tabla de resumen ejecutivo
+        $this->generarTablaEstilizada($headers, $data, $widths, '');
+        
+        // Obtener la posición Y después de la tabla de resumen
+        $endResumenY = $this->pdf->GetY();
+        
+        // Ahora generar la tabla de aprovechamiento directamente debajo del resumen
+        // Incluimos la tabla en la misma página
+        $this->generarTablaAprovechamientoIntegrada($curso_id, $fecha);
+        
+        // Añadir más espacio después de ambas tablas
+        $this->pdf->Ln(5);
     }
     
-    private function generarComentarios() {
-        $this->pdf->SetFont('helvetica', 'B', 14);
-        $this->pdf->Cell(0, 10, 'COMENTARIOS Y SUGERENCIAS', 0, 1, 'L');
-        $this->pdf->Ln(5);
-        
+    /**
+     * Método principal para generar el reporte PDF completo por curso y fecha
+     * Versión optimizada para mejor distribución del espacio
+     */
+    public function generarReportePorCursoFecha($curso_id, $fecha, $secciones = [], $imagenes_graficos = []) {
         try {
-            // Obtener comentarios de las encuestas
-            $stmt = $this->pdo->query("
-                SELECT 
-                    r.valor_text as comentario,
-                    c.nombre as curso,
-                    p.nombre as profesor,
-                    e.fecha_envio
-                FROM respuestas r
-                JOIN encuestas e ON r.encuesta_id = e.id
-                LEFT JOIN cursos c ON e.curso_id = c.id
-                LEFT JOIN profesores p ON r.profesor_id = p.id
-                JOIN preguntas pr ON r.pregunta_id = pr.id
-                WHERE r.valor_text IS NOT NULL 
-                AND r.valor_text != ''
-                AND LENGTH(r.valor_text) > 10
-                ORDER BY e.fecha_envio DESC
-                LIMIT 20
-            ");
+            // Verificar y establecer la conexión a la base de datos
+            $this->verificarConexionBD();
             
-            $comentarios = $stmt->fetchAll();
+            // Validar que el curso existe
+            $stmt = $this->pdo->prepare("SELECT id, nombre FROM cursos WHERE id = :curso_id");
+            $stmt->execute([':curso_id' => $curso_id]);
+            $curso = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (empty($comentarios)) {
-                $this->pdf->SetFont('helvetica', '', 11);
-                $this->pdf->Cell(0, 10, 'No se encontraron comentarios detallados en las encuestas.', 0, 1);
-                return;
+            if (!$curso) {
+                throw new Exception("Curso no encontrado con ID: $curso_id");
             }
             
-            $this->pdf->SetFont('helvetica', '', 10);
-            $this->pdf->Cell(0, 8, 'Total de comentarios encontrados: ' . count($comentarios), 0, 1);
-            $this->pdf->Ln(5);
+            $this->pdf->AddPage();
             
-            foreach ($comentarios as $index => $comentario) {
-                // Fondo alternado para cada comentario
-                if ($index % 2 == 0) {
-                    $this->pdf->SetFillColor(248, 249, 250);
-                } else {
-                    $this->pdf->SetFillColor(255, 255, 255);
+            // HEADER PRINCIPAL - Más compacto para ahorrar espacio
+            $this->generarHeaderPrincipal($curso, $fecha);
+            
+            // GENERAR SECCIONES EN EL ORDEN OPTIMIZADO
+            // Priorizar las secciones más importantes para la primera página
+            $seccionesPrioritarias = ['resumen_ejecutivo', 'resumen_completo'];
+            $seccionesRestantes = array_diff($secciones, $seccionesPrioritarias);
+            
+            // Primero generar las secciones prioritarias
+            foreach ($seccionesPrioritarias as $seccion) {
+                if (in_array($seccion, $secciones)) {
+                    try {
+                        switch ($seccion) {
+                            case 'resumen_ejecutivo': // Mantener compatibilidad con llamadas antiguas
+                            case 'resumen_completo':  // Nueva sección combinada
+                                $this->generarResumenEjecutivoEstilizado($curso_id, $fecha);
+                                break;
+                        }
+                    } catch (Exception $e) {
+                        $this->agregarMensajeError($seccion, $e->getMessage());
+                    }
                 }
-                
-                // Información del comentario
-                $this->pdf->SetFont('helvetica', 'B', 9);
-                $this->pdf->SetTextColor(0, 123, 255);
-                
-                $info = ($comentario['curso'] ?? 'Sin curso') . ' - ' . ($comentario['profesor'] ?? 'Sin profesor');
-                if ($comentario['fecha_envio']) {
-                    $info .= ' (' . date('d/m/Y', strtotime($comentario['fecha_envio'])) . ')';
-                }
-                
-                $this->pdf->Cell(0, 6, $info, 0, 1, 'L', true);
-                
-                // Contenido del comentario
-                $this->pdf->SetFont('helvetica', '', 9);
-                $this->pdf->SetTextColor(0, 0, 0);
-                
-                // Ajustar texto del comentario
-                $comentario_texto = substr($comentario['comentario'], 0, 300);
-                if (strlen($comentario['comentario']) > 300) {
-                    $comentario_texto .= '...';
-                }
-                
-                $this->pdf->MultiCell(0, 5, $comentario_texto, 0, 'L', true);
-                $this->pdf->Ln(3);
             }
+            
+            // Luego generar el resto de las secciones
+            foreach ($seccionesRestantes as $seccion) {
+                try {
+                    switch ($seccion) {
+                        case 'graficos_evaluacion':
+                            // Ya no generamos la tabla de aprovechamiento aquí porque está incluida en el resumen
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'GRÁFICOS DE EVALUACIÓN', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            
+                            // Obtener los datos para los gráficos
+                            $datos_graficos = $this->obtenerDatosGraficos($curso_id, $fecha);
+                            if (empty($datos_graficos)) {
+                                $this->pdf->SetFont('dejavusans', 'I', 10);
+                                $this->pdf->Cell(0, 10, 'No hay datos suficientes para generar gráficos.', 0, 1);
+                            } else {
+                                // Generar gráficos con la nueva disposición
+                                $this->generarGraficosMejorados($datos_graficos);
+                            }
+                            break;
+                        case 'estadisticas_detalladas':
+                            $this->generarSeccionEstadisticasTablaEstilizada($curso_id, $fecha);
+                            break;
+                        case 'preguntas_criticas':
+                            $this->generarPreguntasCriticasEstilizadas($curso_id, $fecha);
+                            break;
+                        case 'comentarios_curso':
+                            $this->generarComentariosCurso($curso_id, $fecha);
+                            break;
+                        case 'comentarios_profesores':
+                            // Esta sección aún no está implementada pero manejamos el caso
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'COMENTARIOS POR PROFESOR', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, 'Esta sección está en desarrollo y estará disponible próximamente.', 0, 1);
+                            break;
+                        default:
+                            // Sección no reconocida
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, "Sección '$seccion' no implementada.", 0, 1);
+                            $this->pdf->Ln(2);
+                            break;
+                    }
+                } catch (Exception $e) {
+                    $this->agregarMensajeError($seccion, $e->getMessage());
+                }
+            }
+            
+            // Generar el archivo PDF como string binario
+            return $this->pdf->Output('', 'S'); // 'S' para devolver como string
             
         } catch (Exception $e) {
-            $this->pdf->SetFont('helvetica', '', 11);
-            $this->pdf->SetTextColor(220, 53, 69);
-            $this->pdf->Cell(0, 10, 'Error al cargar comentarios: ' . $e->getMessage(), 0, 1);
+            return $this->generarPdfError($e, $curso_id, $fecha);
+        }
+    }
+      /**
+     * Genera un reporte de evaluación completo en PDF
+     * 
+     * @param int $curso_id ID del curso
+     * @param string $fecha Fecha en formato Y-m-d
+     * @param string $outputPath Ruta donde guardar el PDF
+     * @return bool Éxito de la generación
+     */    public function generarReporteEvaluacion($curso_id, $fecha, $outputPath = '') {
+        try {
+            // Verificar y establecer la conexión a la base de datos
+            $this->verificarConexionBD();
+            
+            // Definir las secciones a incluir en el reporte
+            $secciones = ['resumen_completo', 'graficos_evaluacion', 'estadisticas_detalladas', 'preguntas_criticas', 'comentarios_curso'];
+            
+            // Generar el PDF usando el método generarReportePorCursoFecha
+            $pdfContent = $this->generarReportePorCursoFecha($curso_id, $fecha, $secciones);
+            
+            // Si se especificó una ruta de salida, guardar el PDF
+            if (!empty($outputPath)) {
+                // Guardar el contenido binario directamente en el archivo
+                if (file_put_contents($outputPath, $pdfContent) !== false) {
+                    return true;
+                } else {
+                    throw new Exception("Error al guardar el archivo PDF en: $outputPath");
+                }
+            } else if ($pdfContent) {
+                // Si no hay ruta, pero tenemos contenido, devolverlo
+                return $pdfContent;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            error_log("Error al generar el reporte: " . $e->getMessage());
+            // Agregar información de debug más detallada
+            error_log("Detalles: " . $e->getFile() . " línea " . $e->getLine());
+            error_log("Traza: " . $e->getTraceAsString());
+            return false;
+        }
+    }
+    
+    /**
+     * Genera la portada del reporte
+     */
+    private function generarPortada($nombre_curso, $fecha) {
+        $this->pdf->AddPage();
+        
+        // Título principal
+        $this->pdf->SetFont('dejavusans', 'B', 18);
+        $this->pdf->Cell(0, 20, 'REPORTE DE EVALUACIÓN', 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Nombre del curso
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 15, $nombre_curso, 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Fecha
+        $fecha_formateada = date('d/m/Y', strtotime($fecha));
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->Cell(0, 10, 'Fecha: ' . $fecha_formateada, 0, 1, 'C');
+        
+        // Información adicional
+        $this->pdf->Ln(20);
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->Cell(0, 10, 'Este reporte contiene la evaluación completa del curso', 0, 1, 'C');
+        $this->pdf->Cell(0, 10, 'incluyendo gráficos de aprovechamiento y estadísticas.', 0, 1, 'C');
+        
+        // Fecha y hora de generación
+        $this->pdf->Ln(40);
+        $this->pdf->SetFont('dejavusans', '', 9);
+        $this->pdf->Cell(0, 10, 'Generado el: ' . date('d/m/Y H:i:s'), 0, 1, 'R');
+    }
+    
+    /**
+     * Genera un PDF con mensaje de error
+     */
+    private function generarPdfError($error, $curso_id, $fecha) {
+        // Crear un PDF simple con mensaje de error
+        $this->pdf = new TCPDF();
+        $this->configurarPdf();
+        
+        $this->pdf->AddPage();
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 10, 'ERROR AL GENERAR REPORTE', 0, 1, 'C');
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->MultiCell(0, 8, 'Se produjo un error al intentar generar el reporte para el curso ID: ' . $curso_id . ' con fecha: ' . $fecha, 0, 'L');
+        $this->pdf->Ln(5);
+        
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 8, 'Detalle del error:', 0, 1);
+        
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo
+        $this->pdf->MultiCell(0, 6, $error->getMessage(), 0, 'L');
+        
+        $this->pdf->SetTextColor(0, 0, 0); // Resetear color
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 10);
+        $this->pdf->Cell(0, 8, 'Fecha y hora: ' . date('Y-m-d H:i:s'), 0, 1);
+        
+        // Retornar el PDF como string binario
+        return $this->pdf->Output('', 'S');
+    }
+    
+    /**
+     * Genera la sección de comentarios del curso
+     */
+    private function generarComentariosCurso($curso_id, $fecha) {
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 10, 'COMENTARIOS DEL CURSO', 0, 1, 'L');
+        
+        $stmt = $this->pdo->prepare("
+            SELECT r.texto, p.texto as pregunta
+            FROM respuestas r 
+            JOIN preguntas p ON r.pregunta_id = p.id
+            JOIN encuestas e ON r.encuesta_id = e.id
+            WHERE e.curso_id = :curso_id 
+            AND DATE(e.fecha_envio) = :fecha
+            AND p.tipo = 'abierta'
+            AND r.texto IS NOT NULL AND LENGTH(r.texto) > 0
+            ORDER BY p.orden, r.id DESC
+        ");
+        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($comentarios)) {
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 8, "No hay comentarios disponibles para este curso y fecha.", 0, 1);
+            return;
         }
         
-        $this->pdf->Ln(10);
+        $pregunta_actual = '';
+        
+        foreach ($comentarios as $comentario) {
+            // Si cambia la pregunta, mostrarla
+            if ($pregunta_actual != $comentario['pregunta']) {
+                $pregunta_actual = $comentario['pregunta'];
+                $this->pdf->Ln(3);
+                $this->pdf->SetFont('dejavusans', 'B', 10);
+                $this->pdf->MultiCell(0, 7, 'Pregunta: ' . $pregunta_actual, 0, 'L');
+            }
+            
+            $this->pdf->SetFont('dejavusans', 'I', 9);
+            $this->pdf->SetFillColor(248, 249, 250);
+            $this->pdf->MultiCell(0, 6, $comentario['texto'], 1, 'L', true);
+            $this->pdf->Ln(2);
+        }
     }
-
-    // ...existing code...
+    
+    /**
+     * Verifica la conexión a la base de datos y la establece si es necesario
+     * 
+     * @return bool Éxito al establecer la conexión
+     * @throws Exception Si no se puede establecer la conexión
+     */
+    private function verificarConexionBD() {
+        if (!$this->pdo) {
+            try {
+                $db = Database::getInstance();
+                $this->pdo = $db->getConnection();
+            } catch (Exception $e) {
+                throw new Exception("No se pudo establecer conexión con la base de datos: " . $e->getMessage());
+            }
+            
+            if (!$this->pdo) {
+                throw new Exception("No se pudo establecer conexión con la base de datos");
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Agrega un mensaje de error al PDF cuando una sección específica falla
+     *
+     * @param string $seccion Nombre de la sección que falló
+     * @param string $mensaje Mensaje de error detallado
+     */
+    private function agregarMensajeError($seccion, $mensaje) {
+        // Configurar estilo para mensajes de error
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo para errores
+        
+        // Agregar mensaje de error con el nombre de la sección
+        $this->pdf->Cell(0, 10, "Error en sección '$seccion':", 0, 1);
+        
+        // Detalles del error
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->MultiCell(0, 8, $mensaje, 0, 'L');
+        
+        // Restaurar colores normales
+        $this->pdf->SetTextColor(0, 0, 0);
+        $this->pdf->Ln(5);
+        
+        // Registrar error en los logs para diagnóstico
+        error_log("Error en sección PDF '$seccion': $mensaje");
+    }
+    
+    /**
+     * Genera gráficos de evaluación con mejor distribución visual
+     * Versión optimizada para mostrar más gráficos por página
+     */
+    private function generarGraficosMejorados($datos_graficos) {
+        // Configuración de la página
+        $pageWidth = $this->pdf->getPageWidth();
+        $pageHeight = $this->pdf->getPageHeight();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $topMargin = 40; // Considerar espacio para el encabezado
+        $bottomMargin = 25;
+        
+        // Espacio disponible
+        $availableWidth = $pageWidth - $leftMargin - $rightMargin;
+        $availableHeight = $pageHeight - $topMargin - $bottomMargin;
+        
+        // Configuración para los gráficos
+        $chartRadius = min(30, $availableWidth / 6); // Tamaño proporcional y no muy grande
+        $legendWidth = 75;
+        $spaceBetween = 10;
+        $chartSpaceHorizontal = $chartRadius * 3 + $spaceBetween; // Radio * 2 + espacio para la leyenda
+        
+        // Intentar mostrar dos gráficos por fila si hay espacio suficiente
+        $chartsPerRow = ($availableWidth >= $chartSpaceHorizontal * 2) ? 2 : 1;
+        
+        $chartIndex = 0;
+        $currentX = $leftMargin + $chartRadius;
+        $currentY = $this->pdf->GetY() + $chartRadius;
+        
+        // Procesar cada gráfico
+        foreach ($datos_graficos as $grafico) {
+            // Si es un nuevo gráfico y no cabe en la página actual
+            $estimatedHeight = $chartRadius * 2 + 10; // Altura estimada del gráfico
+            $isNewPage = false;
+            
+            if ($currentY + $chartRadius > $pageHeight - $bottomMargin) {
+                $this->pdf->AddPage();
+                $currentY = $topMargin + $chartRadius;
+                $currentX = $leftMargin + $chartRadius;
+                $chartIndex = 0; // Reiniciar contador
+                $isNewPage = true;
+            }
+            
+            // Si estamos empezando una nueva fila
+            if ($chartIndex % $chartsPerRow == 0 && !$isNewPage) {
+                $currentX = $leftMargin + $chartRadius;
+                if ($chartIndex > 0) {
+                    $currentY += $chartRadius * 2 + $spaceBetween;
+                }
+            }
+            
+            // Determinar posición de la leyenda
+            $legendX = $currentX + $chartRadius + 5;
+            
+            // Título del gráfico
+            $this->pdf->SetXY($currentX - $chartRadius, $currentY - $chartRadius - 10);
+            $this->pdf->SetFont('dejavusans', 'B', 10);
+            
+            // Determinar el título basado en el tipo de gráfico
+            $titulo = '';
+            if ($grafico['tipo'] == 'curso') {
+                $titulo = 'Curso: ' . $grafico['nombre'];
+            } elseif ($grafico['tipo'] == 'profesor') {
+                $titulo = 'Prof: ' . $grafico['nombre'];
+            }
+            
+            // Dibujar un título más compacto
+            $this->pdf->Cell($chartRadius * 2 + $legendWidth, 8, $titulo, 0, 1, 'L');
+            
+            // Dibujar el gráfico con su leyenda
+            $this->dibujarGraficoTortaOptimizado($currentX, $currentY, $chartRadius, "", $grafico['categorias'], $legendX);
+            
+            // Avanzar a la siguiente posición horizontal si estamos mostrando varios gráficos por fila
+            if ($chartsPerRow > 1 && $chartIndex % $chartsPerRow < $chartsPerRow - 1) {
+                $currentX += $chartSpaceHorizontal;
+            }
+            
+            $chartIndex++;
+        }
+    }
+    
+    /**
+     * Genera el encabezado principal del reporte con los datos del curso y fecha
+     * Versión optimizada para ocupar menos espacio vertical
+     * 
+     * @param array $curso Datos del curso (id, nombre)
+     * @param string $fecha Fecha del reporte en formato Y-m-d
+     */
+    private function generarHeaderPrincipal($curso, $fecha) {
+        // Logo o título principal
+        $this->pdf->SetFont('dejavusans', 'B', 14);
+        $this->pdf->Cell(0, 8, 'REPORTE DE EVALUACIÓN ACADÉMICA', 0, 1, 'C');
+        
+        // Diseño de dos columnas para info del curso y fecha
+        $pageWidth = $this->pdf->getPageWidth();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $contentWidth = $pageWidth - $leftMargin - $rightMargin;
+        
+        // Posición inicial
+        $this->pdf->SetFont('dejavusans', 'B', 10);
+        $this->pdf->Cell($contentWidth * 0.7, 6, 'Curso: ' . $curso['nombre'], 0, 0, 'L');
+        
+        // Fecha en la misma línea a la derecha
+        $this->pdf->SetFont('dejavusans', '', 9);
+        $this->pdf->Cell($contentWidth * 0.3, 6, 'Fecha: ' . date('d/m/Y', strtotime($fecha)), 0, 1, 'R');
+        
+        // Fecha generación en otra línea a la derecha
+        $this->pdf->Cell($contentWidth * 0.7, 5, '', 0, 0); // Celda vacía a la izquierda
+        $this->pdf->SetFont('dejavusans', 'I', 8);
+        $this->pdf->Cell($contentWidth * 0.3, 5, 'Generado: ' . date('d/m/Y H:i'), 0, 1, 'R');
+          // Línea separadora más sutil
+        $this->pdf->SetDrawColor(220, 220, 220);
+        $this->pdf->Line($leftMargin, $this->pdf->GetY() + 2, $pageWidth - $rightMargin, $this->pdf->GetY() + 2);
+        $this->pdf->Ln(4); // Espacio reducido después del encabezado
+    }
+    
+    // Aquí termina correctamente el método generarHeaderPrincipal
+            $curso = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$curso) {
+                throw new Exception("Curso no encontrado con ID: $curso_id");
+            }
+            
+            $this->pdf->AddPage();
+            
+            // HEADER PRINCIPAL - Más compacto para ahorrar espacio
+            $this->generarHeaderPrincipal($curso, $fecha);
+            
+            // GENERAR SECCIONES EN EL ORDEN OPTIMIZADO
+            // Priorizar las secciones más importantes para la primera página
+            $seccionesPrioritarias = ['resumen_ejecutivo', 'resumen_completo'];
+            $seccionesRestantes = array_diff($secciones, $seccionesPrioritarias);
+            
+            // Primero generar las secciones prioritarias
+            foreach ($seccionesPrioritarias as $seccion) {
+                if (in_array($seccion, $secciones)) {
+                    try {
+                        switch ($seccion) {
+                            case 'resumen_ejecutivo': // Mantener compatibilidad con llamadas antiguas
+                            case 'resumen_completo':  // Nueva sección combinada
+                                $this->generarResumenEjecutivoEstilizado($curso_id, $fecha);
+                                break;
+                        }
+                    } catch (Exception $e) {
+                        $this->agregarMensajeError($seccion, $e->getMessage());
+                    }
+                }
+            }
+            
+            // Luego generar el resto de las secciones
+            foreach ($seccionesRestantes as $seccion) {
+                try {
+                    switch ($seccion) {
+                        case 'graficos_evaluacion':
+                            // Ya no generamos la tabla de aprovechamiento aquí porque está incluida en el resumen
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'GRÁFICOS DE EVALUACIÓN', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            
+                            // Obtener los datos para los gráficos
+                            $datos_graficos = $this->obtenerDatosGraficos($curso_id, $fecha);
+                            if (empty($datos_graficos)) {
+                                $this->pdf->SetFont('dejavusans', 'I', 10);
+                                $this->pdf->Cell(0, 10, 'No hay datos suficientes para generar gráficos.', 0, 1);
+                            } else {
+                                // Generar gráficos con la nueva disposición
+                                $this->generarGraficosMejorados($datos_graficos);
+                            }
+                            break;
+                        case 'estadisticas_detalladas':
+                            $this->generarSeccionEstadisticasTablaEstilizada($curso_id, $fecha);
+                            break;
+                        case 'preguntas_criticas':
+                            $this->generarPreguntasCriticasEstilizadas($curso_id, $fecha);
+                            break;
+                        case 'comentarios_curso':
+                            $this->generarComentariosCurso($curso_id, $fecha);
+                            break;
+                        case 'comentarios_profesores':
+                            // Esta sección aún no está implementada pero manejamos el caso
+                            $this->pdf->AddPage();
+                            $this->pdf->SetFont('dejavusans', 'B', 14);
+                            $this->pdf->Cell(0, 10, 'COMENTARIOS POR PROFESOR', 0, 1, 'L');
+                            $this->pdf->Ln(2);
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, 'Esta sección está en desarrollo y estará disponible próximamente.', 0, 1);
+                            break;
+                        default:
+                            // Sección no reconocida
+                            $this->pdf->SetFont('dejavusans', 'I', 10);
+                            $this->pdf->Cell(0, 10, "Sección '$seccion' no implementada.", 0, 1);
+                            $this->pdf->Ln(2);
+                            break;
+                    }
+                } catch (Exception $e) {
+                    $this->agregarMensajeError($seccion, $e->getMessage());
+                }
+            }
+            
+            // Generar el archivo PDF como string binario
+            return $this->pdf->Output('', 'S'); // 'S' para devolver como string
+            
+        } catch (Exception $e) {
+            return $this->generarPdfError($e, $curso_id, $fecha);
+        }
+    }
+      /**
+     * Genera un reporte de evaluación completo en PDF
+     * 
+     * @param int $curso_id ID del curso
+     * @param string $fecha Fecha en formato Y-m-d
+     * @param string $outputPath Ruta donde guardar el PDF
+     * @return bool Éxito de la generación
+     */    public function generarReporteEvaluacion($curso_id, $fecha, $outputPath = '') {
+        try {
+            // Verificar y establecer la conexión a la base de datos
+            $this->verificarConexionBD();
+            
+            // Definir las secciones a incluir en el reporte
+            $secciones = ['resumen_completo', 'graficos_evaluacion', 'estadisticas_detalladas', 'preguntas_criticas', 'comentarios_curso'];
+            
+            // Generar el PDF usando el método generarReportePorCursoFecha
+            $pdfContent = $this->generarReportePorCursoFecha($curso_id, $fecha, $secciones);
+            
+            // Si se especificó una ruta de salida, guardar el PDF
+            if (!empty($outputPath)) {
+                // Guardar el contenido binario directamente en el archivo
+                if (file_put_contents($outputPath, $pdfContent) !== false) {
+                    return true;
+                } else {
+                    throw new Exception("Error al guardar el archivo PDF en: $outputPath");
+                }
+            } else if ($pdfContent) {
+                // Si no hay ruta, pero tenemos contenido, devolverlo
+                return $pdfContent;
+            }
+            
+            return false;
+        } catch (Exception $e) {
+            error_log("Error al generar el reporte: " . $e->getMessage());
+            // Agregar información de debug más detallada
+            error_log("Detalles: " . $e->getFile() . " línea " . $e->getLine());
+            error_log("Traza: " . $e->getTraceAsString());
+            return false;
+        }
+    }
+    
+    /**
+     * Genera la portada del reporte
+     */
+    private function generarPortada($nombre_curso, $fecha) {
+        $this->pdf->AddPage();
+        
+        // Título principal
+        $this->pdf->SetFont('dejavusans', 'B', 18);
+        $this->pdf->Cell(0, 20, 'REPORTE DE EVALUACIÓN', 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Nombre del curso
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 15, $nombre_curso, 0, 1, 'C');
+        $this->pdf->Ln(5);
+        
+        // Fecha
+        $fecha_formateada = date('d/m/Y', strtotime($fecha));
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->Cell(0, 10, 'Fecha: ' . $fecha_formateada, 0, 1, 'C');
+        
+        // Información adicional
+        $this->pdf->Ln(20);
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->Cell(0, 10, 'Este reporte contiene la evaluación completa del curso', 0, 1, 'C');
+        $this->pdf->Cell(0, 10, 'incluyendo gráficos de aprovechamiento y estadísticas.', 0, 1, 'C');
+        
+        // Fecha y hora de generación
+        $this->pdf->Ln(40);
+        $this->pdf->SetFont('dejavusans', '', 9);
+        $this->pdf->Cell(0, 10, 'Generado el: ' . date('d/m/Y H:i:s'), 0, 1, 'R');
+    }
+    
+    /**
+     * Genera un PDF con mensaje de error
+     */
+    private function generarPdfError($error, $curso_id, $fecha) {
+        // Crear un PDF simple con mensaje de error
+        $this->pdf = new TCPDF();
+        $this->configurarPdf();
+        
+        $this->pdf->AddPage();
+        $this->pdf->SetFont('dejavusans', 'B', 16);
+        $this->pdf->Cell(0, 10, 'ERROR AL GENERAR REPORTE', 0, 1, 'C');
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 12);
+        $this->pdf->MultiCell(0, 8, 'Se produjo un error al intentar generar el reporte para el curso ID: ' . $curso_id . ' con fecha: ' . $fecha, 0, 'L');
+        $this->pdf->Ln(5);
+        
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 8, 'Detalle del error:', 0, 1);
+        
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo
+        $this->pdf->MultiCell(0, 6, $error->getMessage(), 0, 'L');
+        
+        $this->pdf->SetTextColor(0, 0, 0); // Resetear color
+        $this->pdf->Ln(10);
+        
+        $this->pdf->SetFont('dejavusans', '', 10);
+        $this->pdf->Cell(0, 8, 'Fecha y hora: ' . date('Y-m-d H:i:s'), 0, 1);
+        
+        // Retornar el PDF como string binario
+        return $this->pdf->Output('', 'S');
+    }
+    
+    /**
+     * Genera la sección de comentarios del curso
+     */
+    private function generarComentariosCurso($curso_id, $fecha) {
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->Cell(0, 10, 'COMENTARIOS DEL CURSO', 0, 1, 'L');
+        
+        $stmt = $this->pdo->prepare("
+            SELECT r.texto, p.texto as pregunta
+            FROM respuestas r 
+            JOIN preguntas p ON r.pregunta_id = p.id
+            JOIN encuestas e ON r.encuesta_id = e.id
+            WHERE e.curso_id = :curso_id 
+            AND DATE(e.fecha_envio) = :fecha
+            AND p.tipo = 'abierta'
+            AND r.texto IS NOT NULL AND LENGTH(r.texto) > 0
+            ORDER BY p.orden, r.id DESC
+        ");
+        $stmt->execute([':curso_id' => $curso_id, ':fecha' => $fecha]);
+        $comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($comentarios)) {
+            $this->pdf->SetFont('dejavusans', 'I', 10);
+            $this->pdf->Cell(0, 8, "No hay comentarios disponibles para este curso y fecha.", 0, 1);
+            return;
+        }
+        
+        $pregunta_actual = '';
+        
+        foreach ($comentarios as $comentario) {
+            // Si cambia la pregunta, mostrarla
+            if ($pregunta_actual != $comentario['pregunta']) {
+                $pregunta_actual = $comentario['pregunta'];
+                $this->pdf->Ln(3);
+                $this->pdf->SetFont('dejavusans', 'B', 10);
+                $this->pdf->MultiCell(0, 7, 'Pregunta: ' . $pregunta_actual, 0, 'L');
+            }
+            
+            $this->pdf->SetFont('dejavusans', 'I', 9);
+            $this->pdf->SetFillColor(248, 249, 250);
+            $this->pdf->MultiCell(0, 6, $comentario['texto'], 1, 'L', true);
+            $this->pdf->Ln(2);
+        }
+    }
+    
+    /**
+     * Verifica la conexión a la base de datos y la establece si es necesario
+     * 
+     * @return bool Éxito al establecer la conexión
+     * @throws Exception Si no se puede establecer la conexión
+     */
+    private function verificarConexionBD() {
+        if (!$this->pdo) {
+            try {
+                $db = Database::getInstance();
+                $this->pdo = $db->getConnection();
+            } catch (Exception $e) {
+                throw new Exception("No se pudo establecer conexión con la base de datos: " . $e->getMessage());
+            }
+            
+            if (!$this->pdo) {
+                throw new Exception("No se pudo establecer conexión con la base de datos");
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Agrega un mensaje de error al PDF cuando una sección específica falla
+     *
+     * @param string $seccion Nombre de la sección que falló
+     * @param string $mensaje Mensaje de error detallado
+     */
+    private function agregarMensajeError($seccion, $mensaje) {
+        // Configurar estilo para mensajes de error
+        $this->pdf->SetFont('dejavusans', 'B', 12);
+        $this->pdf->SetTextColor(220, 53, 69); // Color rojo para errores
+        
+        // Agregar mensaje de error con el nombre de la sección
+        $this->pdf->Cell(0, 10, "Error en sección '$seccion':", 0, 1);
+        
+        // Detalles del error
+        $this->pdf->SetFont('dejavusans', 'I', 10);
+        $this->pdf->MultiCell(0, 8, $mensaje, 0, 'L');
+        
+        // Restaurar colores normales
+        $this->pdf->SetTextColor(0, 0, 0);
+        $this->pdf->Ln(5);
+        
+        // Registrar error en los logs para diagnóstico
+        error_log("Error en sección PDF '$seccion': $mensaje");
+    }
+    
+    /**
+     * Genera gráficos de evaluación con mejor distribución visual
+     * Versión optimizada para mostrar más gráficos por página
+     */
+    private function generarGraficosMejorados($datos_graficos) {
+        // Configuración de la página
+        $pageWidth = $this->pdf->getPageWidth();
+        $pageHeight = $this->pdf->getPageHeight();
+        $leftMargin = $this->pdf->getMargins()['left'];
+        $rightMargin = $this->pdf->getMargins()['right'];
+        $topMargin = 40; // Considerar espacio para el encabezado
+        $bottomMargin = 25;
+        
+        // Espacio disponible
+        $availableWidth = $pageWidth - $leftMargin - $rightMargin;
+        $availableHeight = $pageHeight - $topMargin - $bottomMargin;
+        
+        // Configuración para los gráficos
+        $chartRadius = min(30, $availableWidth / 6); // Tamaño proporcional y no muy grande
+        $legendWidth = 75;
+        $spaceBetween = 10;
+        $chartSpaceHorizontal = $chartRadius * 3 + $spaceBetween; // Radio * 2 + espacio para la leyenda
+        
+        // Intentar mostrar dos gráficos por fila si hay espacio suficiente
+        $chartsPerRow = ($availableWidth >= $chartSpaceHorizontal * 2) ? 2 : 1;
+        
+        $chartIndex = 0;
+        $currentX = $leftMargin + $chartRadius;
+        $currentY = $this->pdf->GetY() + $chartRadius;
+        
+        // Procesar cada gráfico
+        foreach ($datos_graficos as $grafico) {
+            // Si es un nuevo gráfico y no cabe en la página actual
+            $estimatedHeight = $chartRadius * 2 + 10; // Altura estimada del gráfico
+            $isNewPage = false;
+            
+            if ($currentY + $chartRadius > $pageHeight - $bottomMargin) {
+                $this->pdf->AddPage();
+                $currentY = $topMargin + $chartRadius;
+                $currentX = $leftMargin + $chartRadius;
+                $chartIndex = 0; // Reiniciar contador
+                $isNewPage = true;
+            }
+            
+            // Si estamos empezando una nueva fila
+            if ($chartIndex % $chartsPerRow == 0 && !$isNewPage) {
+                $currentX = $leftMargin + $chartRadius;
+                if ($chartIndex > 0) {
+                    $currentY += $chartRadius * 2 + $spaceBetween;
+                }
+            }
+            
+            // Determinar posición de la leyenda
+            $legendX = $currentX + $chartRadius + 5;
+            
+            // Título del gráfico
+            $this->pdf->SetXY($currentX - $chartRadius, $currentY - $chartRadius - 10);
+            $this->pdf->SetFont('dejavusans', 'B', 10);
+            
+            // Determinar el título basado en el tipo de gráfico
+            $titulo = '';
+            if ($grafico['tipo'] == 'curso') {
+                $titulo = 'Curso: ' . $grafico['nombre'];
+            } elseif ($grafico['tipo'] == 'profesor') {
+                $titulo = 'Prof: ' . $grafico['nombre'];
+            }
+            
+            // Dibujar un título más compacto
+            $this->pdf->Cell($chartRadius * 2 + $legendWidth, 8, $titulo, 0, 1, 'L');
+            
+            // Dibujar el gráfico con su leyenda
+            $this->dibujarGraficoTortaOptimizado($currentX, $currentY, $chartRadius, "", $grafico['categorias'], $legendX);            
+            // Avanzar a la siguiente posición horizontal si estamos mostrando varios gráficos por fila
+            if ($chartsPerRow > 1 && $chartIndex % $chartsPerRow < $chartsPerRow - 1) {
+                $currentX += $chartSpaceHorizontal;
+            }
+            
+            $chartIndex++;
+        }
+    }
 }

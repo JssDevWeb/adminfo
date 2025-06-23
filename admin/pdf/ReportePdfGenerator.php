@@ -1966,23 +1966,12 @@ class ReportePdfGenerator {
         // Fecha generación en otra línea a la derecha
         $this->pdf->Cell($contentWidth * 0.7, 5, '', 0, 0); // Celda vacía a la izquierda
         $this->pdf->SetFont('dejavusans', 'I', 8);
-        $this->pdf->Cell($contentWidth * 0.3, 5, 'Generado: ' . date('d/m/Y H:i'), 0, 1, 'R');
-          // Línea separadora más sutil
+        $this->pdf->Cell($contentWidth * 0.3, 5, 'Generado: ' . date('d/m/Y H:i'), 0, 1, 'R');        // Línea separadora más sutil
         $this->pdf->SetDrawColor(220, 220, 220);
         $this->pdf->Line($leftMargin, $this->pdf->GetY() + 2, $pageWidth - $rightMargin, $this->pdf->GetY() + 2);
         $this->pdf->Ln(4); // Espacio reducido después del encabezado
     }
-    
-    // Aquí termina correctamente el método generarHeaderPrincipal
-            $curso = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$curso) {
-                throw new Exception("Curso no encontrado con ID: $curso_id");
-            }
-            
-            $this->pdf->AddPage();
-            
-            // HEADER PRINCIPAL - Más compacto para ahorrar espacio
+}
             $this->generarHeaderPrincipal($curso, $fecha);
             
             // GENERAR SECCIONES EN EL ORDEN OPTIMIZADO
